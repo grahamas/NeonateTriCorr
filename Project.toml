@@ -1,6 +1,16 @@
 name = "NeonateTriCorr"
-[compat]
-julia = "1.6.3"
-DrWatson = "2.5.0"
+
 [deps]
+AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
+AxisIndices = "f52c9ee2-1b1c-4fd8-8546-6350938c7f11"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
+NamedDims = "356022a1-0364-5f58-8944-0da4b18d706f"
+Neuroimaging = "70dcca16-fae7-5c11-a923-39bcb60edd10"
+
+[compat]
+DrWatson = "2.5.0"
+julia = "1.6.3"
