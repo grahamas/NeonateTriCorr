@@ -1,2 +1,6 @@
+name = "NeonateTriCorr"
+[compat]
+julia = "1.6.3"
+DrWatson = "2.5.0"
 [deps]
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
