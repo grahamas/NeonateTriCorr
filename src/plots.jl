@@ -2,8 +2,9 @@
 using DataFrames, CairoMakie, AlgebraOfGraphics
 
 function plot_eeg_traces(arr::AbstractArray)
+    # TODO call NamedDimsArray constructor
     @assert size(arr,2) > size(arr,1) # assume first dim is channel
-    tbl = Tables.table(eeg_snippet', header=["$i" for i ∈ 1:19])
+    tbl = Tables.table(arr', header=["$i" for i ∈ 1:19])
     df = DataFrame(tbl)
     df.time_bin = 1:nrow(df)
     stacked_df = stack(df, 1:19)
