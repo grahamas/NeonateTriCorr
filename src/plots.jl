@@ -1,15 +1,28 @@
 
 using DataFrames, CairoMakie, AlgebraOfGraphics
 
-function plot_eeg_traces(maybe_arr::AbstractArray)
+function plot_eeg_traces(maybe_arr::AbstractArray; labels=nothing)
     arr = NamedDimsArray{(:channel, :time)}(maybe_arr)
-    tbl = Tables.table(arr', header=["$i" for i ∈ axes(arr, :channel)])
+    tbl = if labels === nothing
+        Tables.table(arr', header=["$i" for i ∈ axes(arr, :channel)])
+    else
+        Tables.table(arr', header=labels)
+    end
     df = DataFrame(tbl)
-    df.time_bin = 1:nrow(df)
+    df.time = 1:nrow(df)
     stacked_df = stack(df, axes(arr, :channel))
     rename!(stacked_df, :value => :signal, :variable => :channel)
-    axis = (height=60, width=800)
     aog_data = data(stacked_df)
-    plt = aog_data * mapping(:time_bin, :signal, row=:channel) * visual(Lines)
-    return (plt, draw(plt; axis))
+    plt = aog_data * mapping(:time, :signal, row=:channel) * visual(Lines)
+    return plt
+end
+
+function draw_eeg_traces(arr::Union{AbstractArray,ProcessedEEGv1})
+    plt = plot_eeg_traces(arr)
+    axis = (height=60, width=800)
+    return draw(plt; axis)
+end
+
+function plot_eeg_traces(eeg::ProcessedEEGv1)
+    plot_eeg_traces(eeg.signals; labels=eeg.labels)
 end
