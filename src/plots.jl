@@ -17,10 +17,17 @@ function plot_eeg_traces(maybe_arr::AbstractArray; labels=nothing)
     return plt
 end
 
-function draw_eeg_traces(arr::Union{AbstractArray,ProcessedEEGv1})
+function draw_eeg_traces(arr::Union{AbstractArray,ProcessedEEGv1}; kwargs...)
     plt = plot_eeg_traces(arr)
     axis = (height=60, width=800)
-    return draw(plt; axis)
+    facet = (; linkyaxes = :none, grid=false, spines=false)
+    fg = draw(plt; axis, facet, kwargs...)
+    for axis_entry in fg.grid
+        ax = axis_entry.axis
+        tightlimits!(ax)
+        hidedecorations!(ax)
+    end
+    fg
 end
 
 function plot_eeg_traces(eeg::ProcessedEEGv1)
