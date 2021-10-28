@@ -21,35 +21,43 @@ PAT = "eeg$(patient_number)"
 edf = EDF.read(datadir("exp_raw", "helsinki", "$(PAT).edf"))
 eeg = ProcessedEEG(edf; exclude=exclude_channels_by_patient[patient_number])
 
-eeg_fig = draw_eeg_traces(eeg)
-save(plotsdir("traces", "traces_$(PAT).png"), eeg_fig)
+#eeg_fig = draw_eeg_traces(eeg)
+#save(plotsdir("traces", "traces_$(PAT).png"), eeg_fig)
 
 λ_max = (9,25)
 n_motif_classes = 14
 
 n_seconds = floor(Int, eeg.duration)
 eeg_motif_class_contributions = NamedDimsArray{(:motif_class, :time)}(zeros(Float64, n_motif_classes, n_seconds-1))
-@showprogress for i_sec ∈ 1:n_seconds-1
+sig_lock = ReentrantLock()
+class_lock = ReentrantLock()
+p = ProgressMeter.Progress(n_seconds-1)
+Threads.@threads for i_sec ∈ 1:n_seconds-1
     i_start = round(Int, (i_sec-1)*eeg.sample_rate+1)
     i_end = round(Int, i_sec*eeg.sample_rate)
-    snippet = eeg.signals[:,i_start:i_end]
+    snippet = lock(sig_lock) do
+        eeg.signals[:,i_start:i_end]
+    end
     normalize_01!(snippet)
     @assert all(snippet .>= 0)
-    @views sequence_class_tricorr_zeropad!(eeg_motif_class_contributions[:,i_sec], snippet, λ_max..., TripleCorrelations.lag_motif_sequence_class)
+    actual_contributions = sequence_class_tricorr_zeropad(snippet, λ_max...)
+    lock(class_lock) do
+        eeg_motif_class_contributions[:,i_sec] .= actual_contributions
+    end
+    ProgressMeter.next!(p)
 end
 jldsave(datadir("eeg_class_actual_SHORT_$(λ_max)_$(PAT).jld2"); class_contributions=eeg_motif_class_contributions)
 
 # Clear bad values
 annotations = load_binary_annotations(patient_number)[:]
 
-fg_all = plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
+fg_all = nothing#plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
 
 (fg_all, eeg_motif_class_contributions, eeg)
 
 end
 
 
-
-res = map([9]) do pat_num#,31,44]
+res = map([31,44]) do pat_num#,31,44]
     eval_class_contributions(pat_num)
 end
