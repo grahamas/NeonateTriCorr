@@ -65,7 +65,7 @@ function ProcessedEEG(edf::EDF.File; exclude=[])
 end
 
 function load_binary_annotations(eeg_num; filepath=datadir("annotations_2017.mat"))
-    sum(matread(filepath)["annotat_new"][eeg_num]; dims=1) .== 3
+    (sum(matread(filepath)["annotat_new"][eeg_num]; dims=1) .== 3)[:]
 end
 
 function calc_seizure_bounds(annotations::AbstractVector)

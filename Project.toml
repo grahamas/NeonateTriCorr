@@ -14,6 +14,7 @@ OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 PaddedViews = "5432bcbf-9aad-5242-b902-cca2824c8663"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 TripleCorrelations = "6a41bcfa-3301-11ec-2a0d-df01ea421e5a"
 WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 
