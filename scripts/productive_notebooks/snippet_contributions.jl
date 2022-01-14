@@ -2,7 +2,7 @@
 using Distributed
 n_cores = length(Sys.cpu_info())
 n_threaded_workers = floor(Int, n_cores / Base.Threads.nthreads())
-addprocs(n_threaded_workers - nworkers())
+#addprocs(n_threaded_workers - nworkers())
 @show nprocs()
 @everywhere using DrWatson
 @everywhere quickactivate("NeonateTriCorr")
@@ -17,6 +17,27 @@ include(scriptsdir("include_src.jl"))
 using EDF, DSP, Statistics, StatsBase
 
 using TripleCorrelations, ProgressMeter, Random, JLD2
+
+using HypothesisTests, CSV
+
+function AN_01norm(snippet, λ_max)
+    normalize_01!(snippet)
+    actual_contributions = sequence_class_tricorr_zeropad(snippet, λ_max...)
+    noise_contributions = sequence_class_tricorr_zeropad(shuffle(snippet), λ_max...)
+    return actual_contributions ./ noise_contributions
+end
+function AN_01norm_power(snippet, λ_max)
+    snippet .^= 2
+    normalize_01!(snippet)
+    actual_contributions = sequence_class_tricorr_zeropad(snippet, λ_max...)
+    noise_contributions = sequence_class_tricorr_zeropad(shuffle(snippet), λ_max...)
+    return actual_contributions ./ noise_contributions
+end
+
+snippet_contributions_fns = Dict(
+    "AN_01norm" => AN_01norm,
+    "AN_01norm_power" => AN_01norm_power
+)
 
 
 exclude_channels_by_patient = Dict(
@@ -47,18 +68,7 @@ function calc_control_snippet_starts(eeg::AbstractProcessedEEG, snippets_duratio
     return vcat([(on+min_dist_to_seizure):snippets_duration:(off-min_dist_to_seizure) for (on, off) ∈ control_bounds if (off-min_dist_to_seizure)-(on+min_dist_to_seizure)>snippets_duration]...)
 end
 
-function calc_class_contributions(eeg::AbstractProcessedEEG;  
-        exclude_channels_by_patient=exclude_channels_by_patient,
-        shuffle_norm=false,
-        kwargs...)
-    if shuffle_norm
-        calc_class_AN_contributions(eeg; kwargs...)
-    else
-        calc_class_actual_contributions(eeg; kwargs...) 
-    end
-end
-
-function calc_class_actual_contributions(eeg::AbstractProcessedEEG; λ_max = (9,25),
+function calc_class_contributions(eeg::AbstractProcessedEEG, contributions_desc::String; λ_max = (9,25),
         n_motif_classes = 14, 
         n_seconds = floor(Int, eeg.duration),
         snippets_start_sec=0:(n_seconds-1),
@@ -72,49 +82,21 @@ function calc_class_actual_contributions(eeg::AbstractProcessedEEG; λ_max = (9,
         i_start = round(Int, (snippet_start_sec*eeg.sample_rate)+1)
         i_end = round(Int, (snippet_start_sec+snippets_duration)*eeg.sample_rate)
         snippet = eeg.signals[:,i_start:i_end]
-        normalize_01!(snippet)
-        @assert all(snippet .>= 0)
-        actual_contributions = sequence_class_tricorr_zeropad(snippet, λ_max...)
-        eeg_motif_class_contributions[:,i_sec] .= actual_contributions
+        contributions = snippet_contributions_fns[contributions_desc](snippet, λ_max)
+        eeg_motif_class_contributions[:,i_sec] .= contributions
+        
         ProgressMeter.next!(p)
     end
     # jldsave(datadir("eeg_class_actual_$(λ_max)_$(PAT).jld2"); class_contributions=eeg_motif_class_contributions)
-
-    fg_all = nothing#plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
-
-    eeg_motif_class_contributions
-end
-
-function calc_class_AN_contributions(eeg::AbstractProcessedEEG; λ_max = (9,25),
-        n_motif_classes = 14, 
-        n_seconds = floor(Int, eeg.duration),
-        snippets_start_sec=0:(n_seconds-1),
-        snippets_duration=1
-    )
-    eeg_motif_class_contributions = NamedDimsArray{(:motif_class, :time)}(zeros(Float64, n_motif_classes, length(snippets_start_sec)))
-    # sig_lock = ReentrantLock()
-    # class_lock = ReentrantLock()
-    p = ProgressMeter.Progress(length(snippets_start_sec))
-    for (i_sec, snippet_start_sec) ∈ enumerate(snippets_start_sec)
-        i_start = round(Int, (snippet_start_sec*eeg.sample_rate)+1)
-        i_end = round(Int, (snippet_start_sec+snippets_duration)*eeg.sample_rate)
-        snippet = eeg.signals[:,i_start:i_end]
-        normalize_01!(snippet)
-        @assert all(snippet .>= 0)
-        actual_contributions = sequence_class_tricorr_zeropad(snippet, λ_max...)
-        noise_contributions = sequence_class_tricorr_zeropad(shuffle(snippet), λ_max...)
-        eeg_motif_class_contributions[:,i_sec] .= actual_contributions ./ noise_contributions
-        ProgressMeter.next!(p)
-    end
-    # jldsave(datadir("eeg_class_actual_$(λ_max)_$(PAT).jld2"); class_contributions=eeg_motif_class_contributions)
-
-    fg_all = nothing#plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
+    5    fg_all = nothing#plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
 
     eeg_motif_class_contributions
 
 end
 
-function control_vs_seizure_class_contributions(eeg::AbstractProcessedEEG; n_snippets, snippets_duration=1, min_dist_to_seizure=300, kwargs...)
+function control_vs_seizure_class_contributions(eeg::AbstractProcessedEEG; 
+    contributions_desc,
+    n_snippets, snippets_duration=1, min_dist_to_seizure=300, kwargs...)
     seizure_snippet_starts = calc_seizure_snippet_starts(eeg, snippets_duration)
     control_snippet_starts = calc_control_snippet_starts(eeg, snippets_duration, min_dist_to_seizure)
 
@@ -126,8 +108,8 @@ function control_vs_seizure_class_contributions(eeg::AbstractProcessedEEG; n_sni
     seizure_snippet_starts = sort(sample(seizure_snippet_starts, min(n_snippets, length(seizure_snippet_starts)), replace=false))
     control_snippet_starts = sort(sample(control_snippet_starts, n_snippets, replace=false))
 
-    seizure_snippets_class_contribution = calc_class_contributions(eeg; snippets_start_sec = seizure_snippet_starts, snippets_duration = snippets_duration, kwargs...)
-    control_snippets_class_contribution = calc_class_contributions(eeg; snippets_start_sec = control_snippet_starts, snippets_duration = snippets_duration, kwargs...)
+    seizure_snippets_class_contribution = calc_class_contributions(eeg, contributions_desc; snippets_start_sec = seizure_snippet_starts, snippets_duration = snippets_duration, kwargs...)
+    control_snippets_class_contribution = calc_class_contributions(eeg, contributions_desc; snippets_start_sec = control_snippet_starts, snippets_duration = snippets_duration, kwargs...)
 
     return (seizure=seizure_snippets_class_contribution, control=control_snippets_class_contribution)
 end
@@ -162,28 +144,42 @@ function boxplot_control_vs_seizure(dct)
     ax.xticks = (1:2, ["control", "seizure"])
     fig
 end
-end #end @everywhere begin
+
+function control_vs_seizure_all_class_statistics(seizure::NamedDimsArray{(:motif_class,:time)}, control::NamedDimsArray{(:motif_class,:time)})
+    DataFrame(map(axes(seizure, :motif_class)) do class_i
+        seizure_i = seizure[class_i,:]
+        control_i = control[class_i,:]
+        return (
+            class = roman_encode(class_i),
+            pvalue = pvalue(MannWhitneyUTest(seizure_i, control_i)),
+            mean_effect = mean(seizure_i) - mean(control_i)
+        )
+    end)
+end 
+end # @everywhere begin
 
 
 using Dates
-let n_snippets = 1000,
-    selected_patients = [9,19,21,31,44,47,50,62,75];
-sub_dir = "snippet_contributions_by_class_$(n_snippets)_AN_$(Dates.now())"
+let n_snippets = 25,
+    contribution_desc = "AN_01norm_power",
+    selected_patients = 1:79;# [9,19,21,31,44,47,50,62,75];
+sub_dir = "snippet_contributions_by_class_$(n_snippets)_$(contribution_desc)_$(Dates.now())"
 mkpath(plotsdir(sub_dir))
 @everywhere Random.seed!(12345)
 
-## Plot the traces (optionally histograms)
-# for pat_num ∈ [9,19,21,31,44,47,50,62,75]
+eegs = load_helsinki_eeg.(selected_patients) # defined in let
+
+# Plot the traces (optionally histograms)
+# for (pat_num, eeg) ∈ zip(selected_patients, eegs)
 #     eeg = load_helsinki_eeg(pat_num)
 
 #     # drw = draw_eeg_hists(eeg)
 #     # save(plotsdir(sub_dir, "pat$(pat_num)_eeg_hist.png"), drw)
 
-#     drw = draw_eeg_traces(eeg; std_max=7)
-#     save(plotsdir(sub_dir, "pat$(pat_num)_eeg_traces.png"), drw)
+#     drw = draw_eeg_traces(eeg; std_max=7, layout=:layout, downsample_factor=10)
+#     save(plotsdir(sub_dir, "pat$(pat_num)_eeg_traces_downsampled_10.png"), drw)
 # end
 
-eegs = load_helsinki_eeg.(selected_patients) # defined in let
 
 ## Plot contributions by case for all classes
 
@@ -193,7 +189,7 @@ eegs = load_helsinki_eeg.(selected_patients) # defined in let
     #     return missing
     # end
     @info "Calculating class contributions for $(pat_num)"
-    contributions_by_case = control_vs_seizure_class_contributions(eeg; n_snippets=n_snippets, min_dist_to_seizure=60, shuffle_norm=true)
+    contributions_by_case = control_vs_seizure_class_contributions(eeg; contributions_desc=contribution_desc, n_snippets=n_snippets, min_dist_to_seizure=60)
     if contributions_by_case |> ismissing
         @warn "Cannot find enough snippets for Patient $(pat_num)"
         return missing
@@ -201,7 +197,17 @@ eegs = load_helsinki_eeg.(selected_patients) # defined in let
     contributions_by_case
 end
 
-@info "Moving to plot"
+# @info "Statistical analyses"
+# eeg_case_statistics_dfs = map(zip(selected_patients, eeg_contributions_by_case)) do (pat_num, contributions_by_case)
+#     df = control_vs_seizure_all_class_statistics(contributions_by_case.seizure, contributions_by_case.control)
+#     df.patient_number = ones(Int, nrow(df)) .* pat_num
+#     df
+# end
+
+# statistics_df = vcat(eeg_case_statistics_dfs...)
+# CSV.write(plotsdir(sub_dir, "AN_by_class_statistics.csv"), statistics_df)
+
+# @info "Moving to plot"
 
 for (pat_num, contributions_by_case) ∈ zip(selected_patients, eeg_contributions_by_case)
     if ismissing(contributions_by_case)
@@ -217,15 +223,15 @@ for (pat_num, contributions_by_case) ∈ zip(selected_patients, eeg_contribution
     )
     fig = boxplot_control_vs_seizure(dct)
     Label(fig[0,:], "Patient $pat_num", tellwidth=false)
-    save(plotsdir(sub_dir, "pat$(pat_num)_comparing_AN.png"), fig)
+    save(plotsdir(sub_dir, "pat$(pat_num)_comparing_$(contribution_desc).png"), fig)
     
     drw = all_class_boxplots_control_vs_seizure(contributions_by_case; show_outliers=true)
    Label(drw.figure[0,:], "Patient $pat_num", tellwidth=false)
-   save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_AN.png"), drw)
+   save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_$(contribution_desc).png"), drw)
 
    drw = all_class_boxplots_control_vs_seizure(contributions_by_case; show_outliers=false)
    Label(drw.figure[0,:], "Patient $pat_num", tellwidth=false)
-   save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_AN_no_outliers.png"), drw)
+   save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_$(contribution_desc)_no_outliers.png"), drw)
 end
 
 # res = map([31]) do pat_num #[9,19,21,31,44,47,50,62,75]

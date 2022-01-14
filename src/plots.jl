@@ -1,7 +1,7 @@
 
 using DataFrames, CairoMakie, AlgebraOfGraphics
 
-function plot_eeg_traces(maybe_arr::AbstractArray; labels=nothing, std_max=nothing, sample_rate, downsample_factor=1)
+function plot_eeg_traces(maybe_arr::AbstractArray; labels=nothing, std_max=nothing, sample_rate, downsample_factor=1, layout=:row)
     arr = NamedDimsArray{(:channel, :time)}(maybe_arr)
     arr = if std_max !== nothing
         arr = copy(arr)
@@ -26,7 +26,13 @@ function plot_eeg_traces(maybe_arr::AbstractArray; labels=nothing, std_max=nothi
     stacked_df = stack(df, axes(arr, :channel))
     rename!(stacked_df, :value => :signal, :variable => :channel)
     aog_data = data(stacked_df)
-    plt = aog_data * mapping(:time, :signal, row=:channel) * visual(Lines)
+    plt = if layout == :row
+        aog_data * mapping(:time, :signal, row=:channel) * visual(Lines)
+    elseif layout == :layout
+        aog_data * mapping(:time, :signal, layout=:channel) * visual(Lines)
+    else
+        error("bad layout kwarg")
+    end
     return plt
 end
 

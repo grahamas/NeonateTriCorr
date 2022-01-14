@@ -52,26 +52,29 @@ function normalize_01!(arr)
     arr ./= maximum(arr)
     return arr
 end
-function process_signal(signal::EDF.Signal, sample_rate; f_low=0.1, f_high=70.)
+function process_signal(signal::EDF.Signal; seconds_per_record, asserted_samples_per_record, f_low=0.1, f_high=70., mains_hz, mains_bandwidth=10)
+    @assert signal.header.samples_per_record == asserted_samples_per_record
+    sample_rate = asserted_samples_per_record / seconds_per_record
     int_data = signal.samples
     data = int_data .- mean(int_data)
-    notch = digitalfilter(Bandstop(50-5, 50+5; fs=sample_rate), Butterworth(6))
+    mains_halfband = mains_bandwidth/2
+    notch = digitalfilter(Bandstop(mains_hz-mains_halfband, mains_hz+mains_halfband; fs=sample_rate), Butterworth(6))
     pass = digitalfilter(Bandpass(f_low, f_high; fs=sample_rate), Butterworth(2))
     data = filtfilt(notch, filtfilt(pass, data))' # want row
     data ./= std(data)
 end
 
-function ProcessedEEG(edf::EDF.File; exclude=[], seizure_annotations=Tuple{Float64,Float64}[], artifact_annotations=Tuple{Float64,Float64}[])
+function ProcessedEEG(edf::EDF.File; exclude=[], seizure_annotations=Tuple{Float64,Float64}[], artifact_annotations=Tuple{Float64,Float64}[], kwargs...)
     @assert edf.header.is_contiguous
     n_records = edf.header.record_count
     seconds_per_record = edf.header.seconds_per_record
-    samples_per_record = edf.signals[1].header.samples_per_record
+    first_samples_per_record = edf.signals[1].header.samples_per_record
     # FIXME should verify sample_rate same for all signals
-    sample_rate = samples_per_record / seconds_per_record
+    sample_rate = first_samples_per_record / seconds_per_record
     duration = n_records * seconds_per_record
     signals = NamedDimsArray{(:channel,:time)}(
         vcat(
-            [process_signal(sig, sample_rate) for sig in edf.signals
+            [process_signal(sig; seconds_per_record = seconds_per_record, asserted_samples_per_record = first_samples_per_record, kwargs...) for sig in edf.signals
              if !any(contains(sig.header.label, ex) for ex in exclude)
             ]...
         )
@@ -87,12 +90,18 @@ function load_binary_annotations(eeg_num; filepath=datadir("annotations_2017.mat
 end
 
 function calc_seizure_bounds(annotations::AbstractVector)
-    changes = diff(annotations[:])
-    onsets = findall(changes .== 1) .+ 1
-    offsets = findall(changes .== -1) .+ 1
-    if length(onsets) == length(offsets) && onsets[1] < offsets[1]
+    changes = diff(vcat([0], annotations[:], [0]))
+    onsets = findall(changes .== 1)
+    offsets = findall(changes .== -1)
+    if !isempty(offsets) && offsets[end] == length(annotations)+1
+        offsets[end] = length(annotations)
+    end
+    if length(onsets) == length(offsets) && ((length(onsets) == 0) || (onsets[1] < offsets[1]))
         return zip(onsets, offsets)
     else
+        @show annotations
+        @show onsets
+        @show offsets
         error("Must implement where artifact within seizure.")
     end
 end
@@ -106,7 +115,11 @@ function load_artifact_annotations(eeg_num)
     helsinki_eeg_artifacts[eeg_num]
 end
 
-function load_helsinki_eeg(eeg_num)
+function load_helsinki_eeg(eeg_num::Int)
     edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
-    eeg = ProcessedEEG(edf; exclude=helsinki_eeg_bad_channels[eeg_num], seizure_annotations=Tuple{Float64,Float64}.(load_seizure_annotations(eeg_num)) |> collect, artifact_annotations=load_artifact_annotations(eeg_num))
+    eeg = ProcessedEEG(edf; exclude=helsinki_eeg_bad_channels[eeg_num], seizure_annotations=Tuple{Float64,Float64}.(load_seizure_annotations(eeg_num)) |> collect, artifact_annotations=load_artifact_annotations(eeg_num), mains_hz=50)
+end
+
+function load_twente_eeg(eeg_name::String)
+    edf = EDF.read(datadir("exp_raw", "twente", eeg_name))
 end
