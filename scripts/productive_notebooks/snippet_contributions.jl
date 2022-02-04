@@ -20,26 +20,6 @@ using TripleCorrelations, ProgressMeter, Random, JLD2
 
 using HypothesisTests, CSV
 
-function AN_01norm(snippet, λ_max)
-    normalize_01!(snippet)
-    actual_contributions = sequence_class_tricorr_zeropad(snippet, λ_max...)
-    noise_contributions = sequence_class_tricorr_zeropad(shuffle(snippet), λ_max...)
-    return actual_contributions ./ noise_contributions
-end
-function AN_01norm_power(snippet, λ_max)
-    snippet .^= 2
-    normalize_01!(snippet)
-    actual_contributions = sequence_class_tricorr_zeropad(snippet, λ_max...)
-    noise_contributions = sequence_class_tricorr_zeropad(shuffle(snippet), λ_max...)
-    return actual_contributions ./ noise_contributions
-end
-
-snippet_contributions_fns = Dict(
-    "AN_01norm" => AN_01norm,
-    "AN_01norm_power" => AN_01norm_power
-)
-
-
 exclude_channels_by_patient = Dict(
     75 => ["ECG","Resp","Cz","Fz"],
     62 => ["ECG","Resp","Cz","Fz"], #unverified
