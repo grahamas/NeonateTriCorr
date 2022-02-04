@@ -152,7 +152,7 @@ function collapse_tuples!(tups::Array{T}) where T
 end
 
 function load_helsinki_artifact_annotations(eeg_num, start_time::Time, excluded_grades=(1,))
-    df = CSV.read(datadir("helsinki_artifacts.csv"), DataFrame)
+    df = CSV.read(scriptsdir("helsinki_artifacts.csv"), DataFrame)
     subset!(df, "Patient #" => ByRow(==(eeg_num)))
     output_df = DataFrame(
         grade = parse_grade.(df.Text),
