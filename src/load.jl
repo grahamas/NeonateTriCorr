@@ -1,6 +1,6 @@
 using MAT, EDF, Statistics, DSP, Downloads, CSV
 
-include(datadir("helsinki_eeg_bad_channels.jl"))
+include(scriptsdir("helsinki_eeg_bad_channels.jl"))
 
 function load_EEG_snippet(path, key)
     test_data_vars = matread(path)
