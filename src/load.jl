@@ -75,7 +75,7 @@ function ProcessedEEG(edf::EDF.File; exclude=[], seizure_annotations=Tuple{Float
     ProcessedEEGv3(signals, labels, sample_rate, start, duration, seizure_annotations, artifact_annotations)
 end
 
-function load_binary_annotations(eeg_num; filepath=datadir("annotations_2017.mat"))
+function load_binary_annotations(eeg_num; filepath=scriptsdir("annotations_2017.mat"))
     (sum(matread(filepath)["annotat_new"][eeg_num]; dims=1) .== 3)[:]
 end
 
