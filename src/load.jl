@@ -1,6 +1,6 @@
-using MAT, NamedDims, EDF, Statistics, DSP, Downloads
+using MAT, EDF, Statistics, DSP, Downloads, CSV
 
-include(datadir("helsinki_eeg_artifacts.jl"))
+include(scriptsdir("helsinki_eeg_bad_channels.jl"))
 
 function load_EEG_snippet(path, key)
     test_data_vars = matread(path)
@@ -36,17 +36,6 @@ function download_helsinki_eegs(eeg_nums; target_dir=datadir("exp_raw", "helsink
     end
 end
 
-abstract type AbstractProcessedEEG end
-
-struct ProcessedEEGv2{T,SIG<:NamedDimsArray{(:channel,:time),T}} <: AbstractProcessedEEG
-    signals::SIG
-    labels::Vector{String}
-    sample_rate::Float64
-    duration::Float64
-    seizure_annotations::Vector{Tuple{Float64,Float64}}
-    artifact_annotations::Vector{Tuple{Float64,Float64}}
-end
-
 function normalize_01!(arr)
     arr .-= minimum(arr)
     arr ./= maximum(arr)
@@ -66,6 +55,7 @@ end
 
 function ProcessedEEG(edf::EDF.File; exclude=[], seizure_annotations=Tuple{Float64,Float64}[], artifact_annotations=Tuple{Float64,Float64}[], kwargs...)
     @assert edf.header.is_contiguous
+    start = edf.header.start
     n_records = edf.header.record_count
     seconds_per_record = edf.header.seconds_per_record
     first_samples_per_record = edf.signals[1].header.samples_per_record
@@ -82,10 +72,10 @@ function ProcessedEEG(edf::EDF.File; exclude=[], seizure_annotations=Tuple{Float
     labels = [replace(replace(replace(sig.header.label, "-Ref" => ""), "-REF"=>""), "EEG " => "") for sig in edf.signals
             if !any(contains(sig.header.label, ex) for ex in exclude)
         ]
-    ProcessedEEGv2(signals, labels, sample_rate, duration, seizure_annotations, artifact_annotations)
+    ProcessedEEGv3(signals, labels, sample_rate, start, duration, seizure_annotations, artifact_annotations)
 end
 
-function load_binary_annotations(eeg_num; filepath=datadir("annotations_2017.mat"))
+function load_binary_annotations(eeg_num; filepath=scriptsdir("annotations_2017.mat"))
     (sum(matread(filepath)["annotat_new"][eeg_num]; dims=1) .== 3)[:]
 end
 
@@ -111,13 +101,72 @@ function load_seizure_annotations(eeg_num; kwargs...)
     calc_seizure_bounds(second_annotations)
 end
 
-function load_artifact_annotations(eeg_num)
-    helsinki_eeg_artifacts[eeg_num]
+function parse_grade(text)
+    text = lowercase(text)
+    if occursin("grade i", text) || occursin("grade 1", text)
+        return 1
+    elseif occursin("grade ii", text) || occursin("grade 2", text)
+        return 2
+    else
+        error("Could not parse grade: $text")
+    end
+end
+function parse_start(text, start_time)
+    d1, time = split(text)
+    @assert d1 == "d1"
+    return Second(Time(time) - start_time).value |> float
+end
+function parse_duration(text)
+    duration, sec = split(text)
+    @assert lowercase(sec) == "sec"
+    return parse(Float64, duration)
+end
+function artifact_tuple(start, duration, artifact_buffer=1)
+    if duration > 0
+        return (start-artifact_buffer, start+duration+artifact_buffer)
+    else
+        return (start-artifact_buffer, start+artifact_buffer)
+    end
+end
+function ordered_overlap(tup1::NTuple{2}, tup2::NTuple{2})
+    # Assumed that tup1[1] <= tup2[1]
+    if tup2[1] <= tup1[2]
+        return true
+    else
+        return false
+    end
+end
+function collapse_tuples!(tups::Array{T}) where T
+    dummy_val = (-1.,-1.)
+    sort!(tups)
+    prev_extant_i = 1
+    for i ∈ eachindex(tups)[begin+1:end]
+        if tups[i] != dummy_val && ordered_overlap(tups[prev_extant_i], tups[i])
+            tups[prev_extant_i] = (tups[prev_extant_i][1], tups[i][2])
+            tups[i] = dummy_val
+        else
+            prev_extant_i = i
+        end
+    end
+    filter!(!=(dummy_val), tups)
 end
 
-function load_helsinki_eeg(eeg_num::Int)
+function load_helsinki_artifact_annotations(eeg_num, start_time::Time, excluded_grades=(1,))
+    df = CSV.read(scriptsdir("helsinki_artifacts.csv"), DataFrame)
+    subset!(df, "Patient #" => ByRow(==(eeg_num)))
+    output_df = DataFrame(
+        grade = parse_grade.(df.Text),
+        start = parse_start.(df.Time, Ref(start_time)),
+        duration = parse_duration.(df.Duration)
+    )
+    possibly_intersecting_tuples = [artifact_tuple(t.start, t.duration) for t in eachrow(output_df) if t.grade ∈ excluded_grades]
+    collapse_tuples!(possibly_intersecting_tuples)
+    return possibly_intersecting_tuples
+end
+
+function load_helsinki_eeg(eeg_num::Int, excluded_artifact_grades=(1,))
     edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
-    eeg = ProcessedEEG(edf; exclude=helsinki_eeg_bad_channels[eeg_num], seizure_annotations=Tuple{Float64,Float64}.(load_seizure_annotations(eeg_num)) |> collect, artifact_annotations=load_artifact_annotations(eeg_num), mains_hz=50)
+    eeg = ProcessedEEG(edf; exclude=helsinki_eeg_bad_channels[eeg_num], seizure_annotations=Tuple{Float64,Float64}.(load_seizure_annotations(eeg_num)) |> collect, artifact_annotations=load_helsinki_artifact_annotations(eeg_num, Time(edf.header.start), excluded_artifact_grades), mains_hz=50)
 end
 
 function load_twente_eeg(eeg_name::String)

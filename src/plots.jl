@@ -1,5 +1,7 @@
 
-using DataFrames, CairoMakie, AlgebraOfGraphics
+
+# ANY SCRIPT USING THIS MUST IMPORT A MAKIE
+using DataFrames, AlgebraOfGraphics
 
 function plot_eeg_traces(maybe_arr::AbstractArray; labels=nothing, std_max=nothing, sample_rate, downsample_factor=1, layout=:row)
     arr = NamedDimsArray{(:channel, :time)}(maybe_arr)
