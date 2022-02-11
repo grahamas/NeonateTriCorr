@@ -2,10 +2,11 @@
 using Distributed
 n_cores = length(Sys.cpu_info())
 n_threaded_workers = floor(Int, n_cores / Base.Threads.nthreads())
-#addprocs(n_threaded_workers - nworkers())
+addprocs(n_threaded_workers - nworkers())
 @show nprocs()
+@show Base.Threads.nthreads()
 @everywhere using DrWatson
-@everywhere quickactivate("NeonateTriCorr")
+@everywhere quickactivate(@__DIR__, "NeonateTriCorr")
 @everywhere using Pkg
 @everywhere Pkg.instantiate()
 
@@ -140,11 +141,11 @@ end # @everywhere begin
 
 
 using Dates
-let n_snippets = 10,
-    boundary = ZeroPadded(),
+let n_snippets = 75,
+    boundary = Periodic(),
     contribution_desc = "AN_01norm_power",
-    λ_max=(8,15),
-    selected_patients = [9];#,19,21,31,44,47,50]#,62,75];
+    λ_max=(8,25),
+    selected_patients = [9,19,21,31,44,47,50]#,62,75];
 sub_dir = "snippet_contributions_by_class_$(typeof(boundary))_$(n_snippets)_$(contribution_desc)_$(Dates.now())"
 mkpath(plotsdir(sub_dir))
 @everywhere Random.seed!(12345)
@@ -202,16 +203,16 @@ for (pat_num, contributions_by_case) ∈ zip(selected_patients, eeg_contribution
         end...
     )
     fig = boxplot_control_vs_seizure(dct)
-    Label(fig[0,:], "Patient $pat_num", tellwidth=false)
-    save(plotsdir(sub_dir, "pat$(pat_num)_comparing_$(contribution_desc).png"), fig)
+    Label(fig[0,:], "Patient $pat_num ($(typeof(boundary)))", tellwidth=false)
+    save(plotsdir(sub_dir, "pat$(pat_num)_comparing_$(contribution_desc)_$(typeof(boundary)).png"), fig)
     
     drw = all_class_boxplots_control_vs_seizure(contributions_by_case; show_outliers=true)
-   Label(drw.figure[0,:], "Patient $pat_num", tellwidth=false)
-   save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_$(contribution_desc).png"), drw)
+   Label(drw.figure[0,:], "Patient $pat_num ($(typeof(boundary))", tellwidth=false)
+   save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_$(contribution_desc)_$(typeof(boundary)).png"), drw)
 
    drw = all_class_boxplots_control_vs_seizure(contributions_by_case; show_outliers=false)
-   Label(drw.figure[0,:], "Patient $pat_num", tellwidth=false)
-   save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_$(contribution_desc)_no_outliers.png"), drw)
+   Label(drw.figure[0,:], "Patient $pat_num ($(typeof(boundary))", tellwidth=false)
+   save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_$(contribution_desc)_no_outliers_$(typeof(boundary)).png"), drw)
 end
 
 # res = map([31]) do pat_num #[9,19,21,31,44,47,50,62,75]
