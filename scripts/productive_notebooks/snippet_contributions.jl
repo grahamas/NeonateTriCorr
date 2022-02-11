@@ -68,7 +68,8 @@ function calc_class_contributions(eeg::AbstractProcessedEEG, boundary, contribut
         
         ProgressMeter.next!(p)
     end
-    # jldsave(datadir("eeg_class_actual_$(λ_max)_$(PAT).jld2"); #plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
+    # jldsave(datadir("eeg_class_actual_$(λ_max)_$(PAT).jld2"); class_contributions=eeg_motif_class_contributions)
+    #plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
 
     eeg_motif_class_contributions
 
@@ -179,15 +180,15 @@ eegs = load_helsinki_eeg.(selected_patients) # defined in let
     contributions_by_case
 end
 
-# @info "Statistical analyses"
-# eeg_case_statistics_dfs = map(zip(selected_patients, eeg_contributions_by_case)) do (pat_num, contributions_by_case)
-#     df = control_vs_seizure_all_class_statistics(contributions_by_case.seizure, contributions_by_case.control)
-#     df.patient_number = ones(Int, nrow(df)) .* pat_num
-#     df
-# end
+@info "Statistical analyses"
+eeg_case_statistics_dfs = map(zip(selected_patients, eeg_contributions_by_case)) do (pat_num, contributions_by_case)
+    df = control_vs_seizure_all_class_statistics(contributions_by_case.seizure, contributions_by_case.control)
+    df.patient_number = ones(Int, nrow(df)) .* pat_num
+    df
+end
 
-# statistics_df = vcat(eeg_case_statistics_dfs...)
-# CSV.write(plotsdir(sub_dir, "AN_by_class_statistics.csv"), statistics_df)
+statistics_df = vcat(eeg_case_statistics_dfs...)
+CSV.write(plotsdir(sub_dir, "AN_$(typeof(boundary))_by_class_statistics.csv"), statistics_df)
 
 using CairoMakie
 for (pat_num, contributions_by_case) ∈ zip(selected_patients, eeg_contributions_by_case)
