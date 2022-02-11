@@ -48,7 +48,7 @@ function calc_control_snippet_starts(eeg::AbstractProcessedEEG, snippets_duratio
     return vcat([(on+min_dist_to_seizure):snippets_duration:(off-min_dist_to_seizure) for (on, off) ∈ control_bounds if (off-min_dist_to_seizure)-(on+min_dist_to_seizure)>snippets_duration]...)
 end
 
-function calc_class_contributions(eeg::AbstractProcessedEEG, contributions_desc::String; λ_max = (9,25),
+function calc_class_contributions(eeg::AbstractProcessedEEG, boundary, contributions_desc::String; λ_max,
         n_motif_classes = 14, 
         n_seconds = floor(Int, eeg.duration),
         snippets_start_sec=0:(n_seconds-1),
@@ -62,21 +62,21 @@ function calc_class_contributions(eeg::AbstractProcessedEEG, contributions_desc:
         i_start = round(Int, (snippet_start_sec*eeg.sample_rate)+1)
         i_end = round(Int, (snippet_start_sec+snippets_duration)*eeg.sample_rate)
         snippet = eeg.signals[:,i_start:i_end]
-        contributions = snippet_contributions_fns[contributions_desc](snippet, λ_max)
+        contributions = snippet_contributions_fns[contributions_desc](snippet, boundary, λ_max)
         eeg_motif_class_contributions[:,i_sec] .= contributions
         
         ProgressMeter.next!(p)
     end
-    # jldsave(datadir("eeg_class_actual_$(λ_max)_$(PAT).jld2"); class_contributions=eeg_motif_class_contributions)
-    5    fg_all = nothing#plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
+    # jldsave(datadir("eeg_class_actual_$(λ_max)_$(PAT).jld2"); #plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
 
     eeg_motif_class_contributions
 
 end
 
 function control_vs_seizure_class_contributions(eeg::AbstractProcessedEEG; 
+    boundary,
     contributions_desc,
-    n_snippets, snippets_duration=1, min_dist_to_seizure=300, kwargs...)
+    n_snippets, snippets_duration=1, min_dist_to_seizure=60, kwargs...)
     seizure_snippet_starts = calc_seizure_snippet_starts(eeg, snippets_duration)
     control_snippet_starts = calc_control_snippet_starts(eeg, snippets_duration, min_dist_to_seizure)
 
@@ -88,8 +88,8 @@ function control_vs_seizure_class_contributions(eeg::AbstractProcessedEEG;
     seizure_snippet_starts = sort(sample(seizure_snippet_starts, min(n_snippets, length(seizure_snippet_starts)), replace=false))
     control_snippet_starts = sort(sample(control_snippet_starts, n_snippets, replace=false))
 
-    seizure_snippets_class_contribution = calc_class_contributions(eeg, contributions_desc; snippets_start_sec = seizure_snippet_starts, snippets_duration = snippets_duration, kwargs...)
-    control_snippets_class_contribution = calc_class_contributions(eeg, contributions_desc; snippets_start_sec = control_snippet_starts, snippets_duration = snippets_duration, kwargs...)
+    seizure_snippets_class_contribution = calc_class_contributions(eeg, boundary, contributions_desc; snippets_start_sec = seizure_snippet_starts, snippets_duration = snippets_duration, kwargs...)
+    control_snippets_class_contribution = calc_class_contributions(eeg, boundary, contributions_desc; snippets_start_sec = control_snippet_starts, snippets_duration = snippets_duration, kwargs...)
 
     return (seizure=seizure_snippets_class_contribution, control=control_snippets_class_contribution)
 end
@@ -110,7 +110,7 @@ function all_class_boxplots_control_vs_seizure(dct; show_outliers=true)
     stacked_df = stack(df, 1:14)
     plt = data(stacked_df) * mapping(:case, :value, layout=:variable) * visual(BoxPlot; show_outliers=show_outliers)
     axis = (xticks = (1:2, ["control", "seizure"]), height=120, width=120)
-    facet = (; linkyaxes = :none, grid=false)
+    facet = (; linkyaxes = :none)
     draw(plt; axis, facet)
 end
 
@@ -140,10 +140,12 @@ end # @everywhere begin
 
 
 using Dates
-let n_snippets = 25,
+let n_snippets = 10,
+    boundary = ZeroPadded(),
     contribution_desc = "AN_01norm_power",
-    selected_patients = 1:79;# [9,19,21,31,44,47,50,62,75];
-sub_dir = "snippet_contributions_by_class_$(n_snippets)_$(contribution_desc)_$(Dates.now())"
+    λ_max=(8,15),
+    selected_patients = [9];#,19,21,31,44,47,50]#,62,75];
+sub_dir = "snippet_contributions_by_class_$(typeof(boundary))_$(n_snippets)_$(contribution_desc)_$(Dates.now())"
 mkpath(plotsdir(sub_dir))
 @everywhere Random.seed!(12345)
 
@@ -162,14 +164,13 @@ eegs = load_helsinki_eeg.(selected_patients) # defined in let
 
 
 ## Plot contributions by case for all classes
-
 @time eeg_contributions_by_case = pmap(zip(selected_patients, eegs)) do (pat_num, eeg)
     # if isempty(eeg.artifact_annotations)
     #     @info "Not replotting $(pat_num): no artifacts noted"
     #     return missing
     # end
-    @info "Calculating class contributions for $(pat_num)"
-    contributions_by_case = control_vs_seizure_class_contributions(eeg; contributions_desc=contribution_desc, n_snippets=n_snippets, min_dist_to_seizure=60)
+    @info "Calculating class contributions for Patient $(pat_num)"
+    contributions_by_case = control_vs_seizure_class_contributions(eeg; contributions_desc=contribution_desc, n_snippets=n_snippets, min_dist_to_seizure=60, boundary=boundary, λ_max=λ_max)
     if contributions_by_case |> ismissing
         @warn "Cannot find enough snippets for Patient $(pat_num)"
         return missing
@@ -187,8 +188,7 @@ end
 # statistics_df = vcat(eeg_case_statistics_dfs...)
 # CSV.write(plotsdir(sub_dir, "AN_by_class_statistics.csv"), statistics_df)
 
-# @info "Moving to plot"
-
+using CairoMakie
 for (pat_num, contributions_by_case) ∈ zip(selected_patients, eeg_contributions_by_case)
     if ismissing(contributions_by_case)
         @info "No analysis for patient $pat_num"

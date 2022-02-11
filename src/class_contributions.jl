@@ -10,17 +10,17 @@ function AN_01norm(snippet, λ_max)
     return actual_contributions ./ noise_contributions
 end
 
-function A_01norm(snippet, λ_max)
+function A_01norm(snippet, boundary, λ_max)
     normalize_01!(snippet)
-    actual_contributions = sequence_class_tricorr_zeropad_unrolled(snippet, λ_max...)
+    actual_contributions = sequence_class_tricorr_unrolled(snippet, boundary, λ_max...)
     return actual_contributions
 end
 
-function AN_01norm_power(snippet, λ_max)
+function AN_01norm_power(snippet, boundary, λ_max)
     snippet .^= 2
     normalize_01!(snippet)
-    actual_contributions = sequence_class_tricorr_zeropad_unrolled(snippet, λ_max...)
-    noise_contributions = sequence_class_tricorr_zeropad_unrolled(shuffle(snippet), λ_max...)
+    actual_contributions = sequence_class_tricorr_unrolled(snippet, boundary, λ_max...)
+    noise_contributions = sequence_class_tricorr_unrolled(shuffle(snippet), boundary, λ_max...) # FIXME should cache noise contributions... somehow.
     return actual_contributions ./ noise_contributions
 end
 
@@ -31,7 +31,7 @@ snippet_contributions_fns = Dict(
 
 ##### Calculating #####
 
-function calc_class_contributions(eeg::AbstractProcessedEEG, contributions_fn::Function; λ_max,
+function calc_class_contributions(eeg::AbstractProcessedEEG, boundary, contributions_fn::Function; λ_max,
         n_motif_classes, 
         n_seconds = floor(Int, eeg.duration),
         snippets_start_sec=0:(n_seconds-1),
@@ -45,7 +45,7 @@ function calc_class_contributions(eeg::AbstractProcessedEEG, contributions_fn::F
         i_start = round(Int, (snippet_start_sec*eeg.sample_rate)+1)
         i_end = round(Int, (snippet_start_sec+snippets_duration)*eeg.sample_rate)
         snippet = eeg.signals[:,i_start:i_end]
-        contributions = contributions_fn(snippet, λ_max)
+        contributions = contributions_fn(snippet, boundary, λ_max)
         eeg_motif_class_contributions[:,i_sec] .= contributions
         
         ProgressMeter.next!(p)
