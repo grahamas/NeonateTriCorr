@@ -164,7 +164,7 @@ function load_helsinki_artifact_annotations(eeg_num, start_time::Time, excluded_
     return possibly_intersecting_tuples
 end
 
-function load_helsinki_eeg(eeg_num::Int, excluded_artifact_grades=(1,))
+function load_helsinki_eeg(eeg_num::Int; excluded_artifact_grades=(1,))
     edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
     eeg = ProcessedEEG(edf; exclude=helsinki_eeg_bad_channels[eeg_num], seizure_annotations=Tuple{Float64,Float64}.(load_seizure_annotations(eeg_num)) |> collect, artifact_annotations=load_helsinki_artifact_annotations(eeg_num, Time(edf.header.start), excluded_artifact_grades), mains_hz=50)
 end

@@ -147,7 +147,7 @@ let n_snippets = 75,
     contribution_desc = "AN_01norm_power",
     λ_max=(8,25),
     selected_patients = [9,19,21,31,44,47,50]#,62,75];
-sub_dir = "snippet_contributions_by_class_$(typeof(boundary))_$(n_snippets)_$(contribution_desc)_$(Dates.now())"
+sub_dir = "snippet_contributions_by_class_$(typeof(boundary))_$(n_snippets)_$(contribution_desc)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS"))"
 mkpath(plotsdir(sub_dir))
 @everywhere Random.seed!(12345)
 
