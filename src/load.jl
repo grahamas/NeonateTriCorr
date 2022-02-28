@@ -60,7 +60,7 @@ function ProcessedEEG(edf::EDF.File; exclude=[], seizure_annotations=Tuple{Float
     seconds_per_record = edf.header.seconds_per_record
     first_samples_per_record = edf.signals[1].header.samples_per_record
     # FIXME should verify sample_rate same for all signals
-    sample_rate = first_samples_per_record / seconds_per_record
+    sample_rate = Int(first_samples_per_record / seconds_per_record)
     duration = n_records * seconds_per_record
     signals = NamedDimsArray{(:channel,:time)}(
         vcat(
@@ -72,7 +72,7 @@ function ProcessedEEG(edf::EDF.File; exclude=[], seizure_annotations=Tuple{Float
     labels = [replace(replace(replace(sig.header.label, "-Ref" => ""), "-REF"=>""), "EEG " => "") for sig in edf.signals
             if !any(contains(sig.header.label, ex) for ex in exclude)
         ]
-    ProcessedEEGv3(signals, labels, sample_rate, start, duration, seizure_annotations, artifact_annotations)
+    ProcessedEEGv5(signals, labels, sample_rate, start, duration, seizure_annotations, artifact_annotations)
 end
 
 function load_binary_annotations(eeg_num; filepath=scriptsdir("annotations_2017.mat"))
@@ -114,12 +114,12 @@ end
 function parse_start(text, start_time)
     d1, time = split(text)
     @assert d1 == "d1"
-    return Second(Time(time) - start_time).value |> float
+    return Second(Time(time) - start_time).value |> Int
 end
-function parse_duration(text)
+function parse_artifact_duration(text)
     duration, sec = split(text)
     @assert lowercase(sec) == "sec"
-    return parse(Float64, duration)
+    return parse(Int, duration)
 end
 function artifact_tuple(start, duration, artifact_buffer=1)
     if duration > 0
@@ -157,7 +157,7 @@ function load_helsinki_artifact_annotations(eeg_num, start_time::Time, excluded_
     output_df = DataFrame(
         grade = parse_grade.(df.Text),
         start = parse_start.(df.Time, Ref(start_time)),
-        duration = parse_duration.(df.Duration)
+        duration = parse_artifact_duration.(df.Duration)
     )
     possibly_intersecting_tuples = [artifact_tuple(t.start, t.duration) for t in eachrow(output_df) if t.grade ∈ excluded_grades]
     collapse_tuples!(possibly_intersecting_tuples)
@@ -166,7 +166,11 @@ end
 
 function load_helsinki_eeg(eeg_num::Int; excluded_artifact_grades=(1,))
     edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
-    eeg = ProcessedEEG(edf; exclude=helsinki_eeg_bad_channels[eeg_num], seizure_annotations=Tuple{Float64,Float64}.(load_seizure_annotations(eeg_num)) |> collect, artifact_annotations=load_helsinki_artifact_annotations(eeg_num, Time(edf.header.start), excluded_artifact_grades), mains_hz=50)
+    ProcessedEEG(edf; 
+        exclude=helsinki_eeg_bad_channels[eeg_num], 
+        seizure_annotations=load_seizure_annotations(eeg_num) |> collect, artifact_annotations=load_helsinki_artifact_annotations(eeg_num, Time(edf.header.start), excluded_artifact_grades), 
+        mains_hz=50
+    )
 end
 
 function load_twente_eeg(eeg_name::String)

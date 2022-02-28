@@ -102,13 +102,13 @@ function plot_eeg_hists(eeg::AbstractProcessedEEG; kwargs...)
     plot_eeg_hists(eeg.signals; labels=eeg.labels, kwargs...)
 end
 
-function plot_contributions(arr::AbstractArray; annotations=nothing, title=nothing, n_motif_classes=14)
+function plot_contributions(arr::AbstractArray; eeg=nothing, title=nothing, n_motif_classes=14)
     df = DataFrame(arr', :auto)
     @assert ncol(df) == n_motif_classes
     plt = data(df) * mapping(1:n_motif_classes, row=dims(1) => x -> roman_encode(x[1])) * visual(Lines)
 
-    facet = (; linkyaxes = :none, grid=false)
-    axis = (height=40, width=500, xlabel="")
+    facet = (; linkyaxes = :none)
+    axis = (height=40, width=500, xlabel="", xgridvisible=false, ygridvisible=false, spinewidth=0)
 
     fg = draw(plt; axis, facet)
     axes = [ae.axis for ae in fg.grid]
@@ -116,9 +116,15 @@ function plot_contributions(arr::AbstractArray; annotations=nothing, title=nothi
     tightlimits!.(axes)
     hidespines!.(axes)
     hidedecorations!.(axes, ticklabels=false)
-    if annotations !== nothing
-        onsets, offsets = calc_seizure_bounds(annotations)
-        vspan!.(axes, Ref(onsets), Ref(offsets), color=(:red, 0.2))
+    if eeg !== nothing
+        seizure_onsets, seizure_offsets = zip([(on,off) for (on,off) in eeg.seizure_annotations if on < off]...)
+        artifact_onsets, artifact_offsets = zip([(on,off) for (on,off) in eeg.artifact_annotations if on < off]...)
+        if !isempty(seizure_onsets)
+            vspan!.(axes, Ref(artifact_onsets), Ref(artifact_offsets), color=(:red, 0.2))
+        end
+        if !isempty(artifact_onsets)
+            vspan!.(axes, Ref(seizure_onsets), Ref(seizure_offsets), color=(:blue, 0.2))
+        end
     end
     if title !== nothing
         Label(fg.figure[0,:], title, tellwidth=false)
