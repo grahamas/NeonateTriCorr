@@ -38,7 +38,7 @@ function calc_class_contributions(eeg::AbstractProcessedEEG, boundary, contribut
     eeg_motif_class_contributions = NamedDimsArray{(:motif_class, :time)}(zeros(Float64, n_motif_classes, length(snippets_start_sec)))
     # sig_lock = ReentrantLock()
     # class_lock = ReentrantLock()
-    p = ProgressMeter.Progress(length(snippets_start_sec))
+    #p = ProgressMeter.Progress(length(snippets_start_sec))
     for (i_sec, snippet_start_sec) ∈ enumerate(snippets_start_sec)
         i_start = round(Int, (snippet_start_sec*eeg.sample_rate)+1)
         i_end = round(Int, (snippet_start_sec+snippets_duration)*eeg.sample_rate)
@@ -46,7 +46,7 @@ function calc_class_contributions(eeg::AbstractProcessedEEG, boundary, contribut
         contributions = contributions_fn(snippet, boundary, λ_max)
         eeg_motif_class_contributions[:,i_sec] .= contributions
         
-        ProgressMeter.next!(p)
+        #ProgressMeter.next!(p)
     end
     # jldsave(datadir("eeg_class_actual_$(λ_max)_$(PAT).jld2"); class_contributions=eeg_motif_class_contributions)
     #plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
@@ -63,7 +63,7 @@ function calc_class_contributions(eeg::AbstractProcessedEEG,
     n_seconds = floor(Int, eeg.duration)
     snippets_start_sec=0:snippets_duration:(n_seconds-1)
     eeg_motif_class_contributions = NamedDimsArray{(:motif_class, :time)}(zeros(Float64, n_motif_classes, length(snippets_start_sec)))
-    p = ProgressMeter.Progress(length(snippets_start_sec))
+    #p = ProgressMeter.Progress(length(snippets_start_sec))
     for (i_sec, snippet_start_sec) ∈ enumerate(snippets_start_sec)
         if !in_artifact(snippet_start_sec, eeg)
             i_start = round(Int, (snippet_start_sec*eeg.sample_rate)+1)
@@ -75,7 +75,7 @@ function calc_class_contributions(eeg::AbstractProcessedEEG,
             eeg_motif_class_contributions[:,i_sec] .= missing
         end
         
-        ProgressMeter.next!(p)
+        #ProgressMeter.next!(p)
     end
     # jldsave(datadir("eeg_class_actual_$(λ_max)_$(PAT).jld2"); class_contributions=eeg_motif_class_contributions)
     #plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
