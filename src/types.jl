@@ -12,6 +12,18 @@ struct ProcessedEEGv5{T,SIG<:NamedDimsArray{(:channel,:time),T},ANN_T,ANN<:Vecto
     artifact_annotations::ANN
 end
 
+function get_times(eeg::ProcessedEEGv5{T}) where T
+    0.:1/eeg.sample_rate:(eeg.duration-1/eeg.sample_rate)
+end
+function get_signal(eeg::ProcessedEEGv5{T}) where T
+    times = get_times(eeg)
+    @show length(times)
+    artifact_times = in_artifact.(times, Ref(eeg))
+    arr = Array{Union{T,Missing}}(eeg.signals)
+    arr[:, artifact_times] .= missing
+    return arr
+end
+
 function in_tuple(sec, (start,stop)::NTuple{2})
     start <= sec < stop
 end
@@ -22,7 +34,7 @@ function in_artifact(sec, eeg::ProcessedEEGv5)
 end
 
 function restrict_ranges(tups, start, stop)
-    [(max(on,start),min(off,stop)) for (on,off) ∈ eeg.seizure_annotations if on ∈ start..stop || off ∈ start..stop]
+    [(max(on,start),min(off,stop)) for (on,off) ∈ tups if on ∈ start..stop || off ∈ start..stop]
 end
 
 function snip(eeg::ProcessedEEGv5, duration)

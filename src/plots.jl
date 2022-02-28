@@ -3,13 +3,13 @@
 # ANY SCRIPT USING THIS MUST IMPORT A MAKIE
 using DataFrames, AlgebraOfGraphics
 
-function plot_eeg_traces(maybe_arr::AbstractArray; labels=nothing, std_max=nothing, sample_rate, downsample_factor=1, layout=:row)
-    arr = NamedDimsArray{(:channel, :time)}(maybe_arr)
+function plot_eeg_traces(eeg::AbstractProcessedEEG; labels=eeg.labels, std_max=nothing, sample_rate=eeg.sample_rate, downsample_factor=1, layout=:row)
+    arr = NamedDimsArray{(:channel, :time)}(get_signal(eeg))
     arr = if std_max !== nothing
         arr = copy(arr)
         for i_channel ∈ 1:size(arr,1)
             timeseries = arr[i_channel, :]
-            std_i = std(timeseries)
+            std_i = std(dropmissing(timeseries))
             arr[i_channel, abs.(timeseries) .> (std_max * std_i)] .= NaN
         end
         arr
@@ -94,17 +94,15 @@ function draw_eeg_hists(arr::AbstractProcessedEEG; title=nothing, kwargs...)
     fg
 end
 
-function plot_eeg_traces(eeg::AbstractProcessedEEG; kwargs...)
-    plot_eeg_traces(eeg.signals; labels=eeg.labels, sample_rate=eeg.sample_rate, kwargs...)
-end
-
 function plot_eeg_hists(eeg::AbstractProcessedEEG; kwargs...)
     plot_eeg_hists(eeg.signals; labels=eeg.labels, kwargs...)
 end
 
-function plot_contributions(arr::AbstractArray; eeg=nothing, title=nothing, n_motif_classes=14)
-    df = DataFrame(arr', :auto)
-    @assert ncol(df) == n_motif_classes
+plot_contributions(vec::AbstractVector; kwargs...) = plot_contributions(DataFrame([vec], :auto); kwargs...)
+plot_contributions(arr::AbstractMatrix; kwargs...) = plot_contributions(DataFrame(arr', :auto); kwargs...)
+
+function plot_contributions(df::DataFrame; eeg=nothing, title=nothing, n_motif_classes=14)
+    @assert (ncol(df) == n_motif_classes) (ncol(df), n_motif_classes)
     plt = data(df) * mapping(1:n_motif_classes, row=dims(1) => x -> roman_encode(x[1])) * visual(Lines)
 
     facet = (; linkyaxes = :none)
