@@ -15,7 +15,7 @@ using HypothesisTests, CSV
 
 rms(xs) = sqrt(mean(xs .^ 2))
 
-let eeg = load_helsinki_eeg(PAT), eeg = snip(eeg, 5);
+let eeg = load_helsinki_eeg(PAT);
 
 contributions = calc_class_contributions(eeg, Periodic(), AN_01norm;
         λ_max = (8,25),
