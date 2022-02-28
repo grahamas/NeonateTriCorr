@@ -11,7 +11,7 @@ end
 
 function AN_01norm(snippet, boundary, λ_max)
     normalize_01!(snippet)
-    bootstrap_normed_sequence_classes(snippet, boundary, λ_max...; n_bootstraps=3, bootstraps_step=3)
+    bootstrap_normed_sequence_classes(snippet, boundary, λ_max...; n_bootstraps=2, bootstraps_step=2)
 end
 
 function AN_01norm_power(snippet, boundary, λ_max)
