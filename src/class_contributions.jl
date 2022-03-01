@@ -62,7 +62,7 @@ function calc_class_contributions(eeg::AbstractProcessedEEG,
     )
     n_seconds = floor(Int, eeg.duration)
     snippets_start_sec=0:snippets_duration:(n_seconds-1)
-    eeg_motif_class_contributions = NamedDimsArray{(:motif_class, :time)}(zeros(Float64, n_motif_classes, length(snippets_start_sec)))
+    eeg_motif_class_contributions = NamedDimsArray{(:motif_class, :time)}(zeros(Union{Float64,Missing}, n_motif_classes, length(snippets_start_sec)))
     #p = ProgressMeter.Progress(length(snippets_start_sec))
     @threads for i_sec ∈ 1:length(snippets_start_sec)
         snippet_start_sec = snippets_start_sec[i_sec]

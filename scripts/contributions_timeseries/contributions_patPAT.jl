@@ -16,6 +16,8 @@ using HypothesisTests, CSV
 
 rms(xs) = sqrt(mean(xs .^ 2))
 
+moving_average(vs, n) = [mean(skipmissing(@view vs[(i-n+1):i])) for i in n:length(vs)]
+
 let eeg = load_helsinki_eeg(PAT);
 
 contributions = calc_class_contributions(eeg, Periodic(), AN_01norm;
@@ -38,10 +40,10 @@ rms_timeseries = [rms(contributions[:,i_sec]) for i_sec ∈ 1:size(contributions
 rms_fig = plot_contributions(rms_timeseries; eeg=eeg, n_motif_classes=1)
 save(joinpath(plots_subdir, "timeseries_AN_RMS_pat$(PAT)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")).$(ext)"), rms_fig)
 
-lowpass = digitalfilter(Lowpass(0.2; fs=eeg.sample_rate), Butterworth(2))
-lowpass_rms = filt(lowpass, rms_timeseries) # want row
+window = 60
+lowpass_rms = moving_average(rms_timeseries, window)
 lowpass_rms_fig = plot_contributions(lowpass_rms; eeg=eeg, n_motif_classes=1)
-save(joinpath(plots_subdir, "timeseries_AN_lowpassRMS_pat$(PAT)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")).$(ext)"), lowpass_rms_fig)
+save(joinpath(plots_subdir, "timeseries_AN_mvgavg$(window)RMS_pat$(PAT)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")).$(ext)"), lowpass_rms_fig)
 
 end
 

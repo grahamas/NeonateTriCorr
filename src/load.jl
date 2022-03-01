@@ -87,7 +87,7 @@ function calc_seizure_bounds(annotations::AbstractVector)
         offsets[end] = length(annotations)
     end
     if length(onsets) == length(offsets) && ((length(onsets) == 0) || (onsets[1] < offsets[1]))
-        return zip(onsets, offsets)
+        return Vector{Tuple{Int,Int}}(zip(onsets, offsets))
     else
         @show annotations
         @show onsets
@@ -159,7 +159,7 @@ function load_helsinki_artifact_annotations(eeg_num, start_time::Time, excluded_
         start = parse_start.(df.Time, Ref(start_time)),
         duration = parse_artifact_duration.(df.Duration)
     )
-    possibly_intersecting_tuples = [artifact_tuple(t.start, t.duration) for t in eachrow(output_df) if t.grade ∈ excluded_grades]
+    possibly_intersecting_tuples = Tuple{Int,Int}[artifact_tuple(t.start, t.duration) for t in eachrow(output_df) if t.grade ∈ excluded_grades]
     collapse_tuples!(possibly_intersecting_tuples)
     return possibly_intersecting_tuples
 end
