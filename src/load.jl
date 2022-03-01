@@ -87,7 +87,7 @@ function calc_seizure_bounds(annotations::AbstractVector)
         offsets[end] = length(annotations)
     end
     if length(onsets) == length(offsets) && ((length(onsets) == 0) || (onsets[1] < offsets[1]))
-        return Vector{Tuple{Int,Int}}(zip(onsets, offsets))
+        return Vector{Tuple{Int,Int}}(zip(onsets, offsets) |> collect)
     else
         @show annotations
         @show onsets
