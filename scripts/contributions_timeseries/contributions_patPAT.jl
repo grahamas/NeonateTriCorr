@@ -18,7 +18,7 @@ rms(xs) = sqrt(mean(xs .^ 2))
 
 let eeg = load_helsinki_eeg(PAT), eeg=snip(eeg,30);
 
-contributions = @btime calc_class_contributions($eeg, Periodic(), $AN_01norm;
+contributions = calc_class_contributions($eeg, Periodic(), $AN_01norm;
         λ_max = (8,25),
         n_motif_classes = 14,
         snippets_duration=1
