@@ -4,6 +4,7 @@ using DrWatson
 
 # Define PAT before running this script
 
+using Base.Threads
 include(scriptsdir("include_src.jl"))
 
 using EDF, DSP, Statistics, StatsBase, CairoMakie
@@ -15,9 +16,9 @@ using HypothesisTests, CSV
 
 rms(xs) = sqrt(mean(xs .^ 2))
 
-let eeg = load_helsinki_eeg(PAT);
+let eeg = load_helsinki_eeg(PAT), eeg=snip(eeg,30);
 
-contributions = calc_class_contributions(eeg, Periodic(), AN_01norm;
+contributions = @btime calc_class_contributions($eeg, Periodic(), $AN_01norm;
         λ_max = (8,25),
         n_motif_classes = 14,
         snippets_duration=1
@@ -43,3 +44,5 @@ lowpass_rms_fig = plot_contributions(lowpass_rms; eeg=eeg, n_motif_classes=1)
 save(joinpath(plots_subdir, "timeseries_AN_lowpassRMS_pat$(PAT)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")).$(ext)"), lowpass_rms_fig)
 
 end
+
+# single thread:   66.249 s (90203946 allocations: 8.51 GiB)
