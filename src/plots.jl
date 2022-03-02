@@ -115,8 +115,10 @@ function plot_contributions(df::DataFrame; eeg=nothing, title=nothing, n_motif_c
     hidespines!.(axes)
     hidedecorations!.(axes, ticklabels=false)
     if eeg !== nothing
-        seizure_onsets, seizure_offsets = zip([(on,off) for (on,off) in eeg.seizure_annotations if on < off]...)
-        artifact_onsets, artifact_offsets = zip([(on,off) for (on,off) in eeg.artifact_annotations if on < off]...)
+        seizure_onsets = zip([on for (on,off) in eeg.seizure_annotations if on < off]...)
+        seizure_offsets = zip([off for (on,off) in eeg.seizure_annotations if on < off]...)
+        artifact_onsets = zip([on for (on,off) in eeg.artifact_annotations if on < off]...)
+        artifact_offsets = zip([off for (on,off) in eeg.artifact_annotations if on < off]...)
         if !isempty(seizure_onsets)
             vspan!.(axes, Ref(artifact_onsets), Ref(artifact_offsets), color=(:red, 0.2))
         end
