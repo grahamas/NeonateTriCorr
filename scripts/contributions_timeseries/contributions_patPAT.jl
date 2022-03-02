@@ -18,7 +18,7 @@ rms(xs) = sqrt(mean(xs .^ 2))
 
 moving_average(vs, n) = [mean(skipmissing(@view vs[(i-n+1):i])) for i in n:length(vs)]
 
-let eeg = load_helsinki_eeg(PAT), eeg = snip(eeg, 61);
+let eeg = load_helsinki_eeg(PAT);
 
 contributions = calc_class_contributions(eeg, Periodic(), AN_01norm;
         λ_max = (8,25),
