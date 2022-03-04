@@ -81,7 +81,6 @@ Patient #,Text,Time,Duration,Origin
 50,"Grade II Artifact, Mechanical, F3",d1 11:40:52,17 sec,Insight
 50,"Grade II Artifact, Mechanical, Fz, F3",d1 11:40:21,13 sec,Insight
 50,"Grade II Artifact, Mechanical, All Channels",d1 11:39:40,12 sec,Insight
-50,"Grade II Artifact, Mechanical, All Channels",d1 11:39:40,12 sec,Insight
 50,"Grade II Artifact, Mechanical, All Channels",d1 11:29:53,17 sec,Insight
 50,"Grade II Artifact, Mechanical, All Channels",d1 11:28:35,24 sec,Insight
 9,"Grade II Artifact, Mechanical, All Channels",d1 11:42:13,0 sec,Insight
@@ -168,14 +167,9 @@ Patient #,Text,Time,Duration,Origin
 47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:35,0 sec,Insight
 47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:37,0 sec,Insight
 47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:39,0 sec,Insight
-47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:39,0 sec,Insight
-47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:41,0 sec,Insight
 47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:41,0 sec,Insight
 47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:43,0 sec,Insight
-47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:43,0 sec,Insight
 47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:45,0 sec,Insight
-47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:45,0 sec,Insight
-47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:47,0 sec,Insight
 47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:47,0 sec,Insight
 47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:49,0 sec,Insight
 47,"Grade I Artifact, Muscle, Fp2, Fp1, F8, F4, T3, T4, T6",d1 11:11:49,63 sec,Insight
@@ -261,3 +255,211 @@ Patient #,Text,Time,Duration,Origin
 47,"Grade I Artifact, Mechanical, Fp2",d1 11:29:39,3 sec,Insight
 47,"Grade I Artifact, Muscle, Fp1, Fp2, F7, F4, F8, T3, T4, T6",d1 11:40:03,7 sec,Insight
 47,"Grade II Artifact, Mechanical, All Channels",d1 12:11:05,1 sec,Insight
+62,"Grade II Artifact, Mechanical, All Channels",d1 11:13:48,318 sec,Insight
+62,"Grade II Artifact, Mechanical, All Channels",d1 11:21:39,6 sec,Insight
+62,"Grade I Artifact, EKG, All Channels Except F3, F4, Fz",d1 11:25:19,39 sec,Insight
+62,"Grade II Artifact, Mechanical, All Channels",d1 11:42:23,2 sec,Insight
+62,"Grade II Artifact, Mechanical, All Channels",d1 11:59:22,1 sec,Insight
+62,"Grade II Artifact, Mechanical, All Channels",d1 12:00:00,1 sec,Insight
+62,"Grade II Artifact, Mechanical, All Channels",d1 12:48:27,2 sec,Insight
+75,"Grade II Artifact, Mechanical, All Channels",d1 11:12:15,9 sec,Insight
+75,"Grade I Artifact, Muscle, T3, T5, T4, Fp1, Fp2",d1 11:13:45,7 sec,Insight
+75,"Grade I Artifact, Muscle, T3, T5, T4, Fp1, Fp2",d1 11:14:04,10 sec,Insight
+75,"Grade II Artifact, Mechanical, All Channels",d1 11:14:28,0 sec,Insight
+75,"Grade I Artifact, Muscle, T3, T5, T4",d1 11:15:52,5 sec,Insight
+75,"Grade II Artifact, Mechanical, All Channels",d1 11:21:24,2 sec,Insight
+75,"Grade I Artifact, Muscle, T3, T5, T4, Fp1, Fp2",d1 11:21:37,192 sec,Insight
+75,"Grade II Artifact, Mechanical, F8",d1 11:25:10,2 sec,Insight
+75,"Grade I Artifact, Unknown, All Channels, Periodic",d1 11:27:01,2801 sec,Insight
+75,"Grade I Artifact, Muscle, T3, T4",d1 12:14:36,3 sec,Insight
+75,"Grade II Artifact, Mechanical, All Channels",d1 12:16:51,10 sec,Insight
+2,"Grade I Artifact, Muscle, Fp1, Fp2, T3, T5, T4, T6, F7, F8",d1 11:11:11,16 sec,Insight
+2,"Grade I Artifact, Muscle Artifact, Fp1, Fp2, T3, T4",d1 11:11:29,44 sec,Insight
+2,"Grade I Artifact, Muscle Artifact, F8, T3, T4",d1 11:12:45,2 sec,Insight
+2,"Grade I Artifact, Muscle, F8, T3",d1 11:12:59,4 sec,Insight
+2,"Grade I Artifact, Electrical, F8, T3, T4",d1 11:13:14,1 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:13:55,3 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:14:16,4 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:14:30,16 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:15:30,6 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:15:45,4 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3",d1 11:16:14,5 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:16:33,6 sec,Insight
+2,"Grade II Artifact, Mechanical, F7, F8, T3, T4",d1 11:17:26,6 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:17:42,6 sec,Insight
+2,"Grade II Artifact, Mechanical, F7, F8, T3, T4",d1 11:18:13,9 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3",d1 11:19:18,5 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3",d1 11:19:34,4 sec,Insight
+2,"Grade II Artifact, Mechanical, F7, F8, T3, T4",d1 11:19:46,6 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3",d1 11:20:01,51 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3",d1 11:21:04,2 sec,Insight
+2,"Grade II Artifact, Mechanical, F7, F8, T3",d1 11:21:19,4 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3",d1 11:21:42,3 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3",d1 11:21:51,1 sec,Insight
+2,"Grade II Artifact, Mechanical, T3, T5, T4, T6",d1 11:22:13,3 sec,Insight
+2,"Grade II Artifact, Mechanical, F7, F8, T3",d1 11:22:24,3 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3",d1 11:22:41,2 sec,Insight
+2,"Grade II Artifact, Muscle, Fp1, Fp2, F7, F8, T5, T6",d1 11:23:30,7 sec,Insight
+2,"Grade II Artifact, Mechanical, T3",d1 11:25:09,1 sec,Insight
+2,"Grade II Artifact, Muscle T5, T6",d1 11:26:30,6 sec,Insight
+2,"Grade II Artifact, Msucle T5, T6",d1 11:27:27,11 sec,Insight
+2,"Grade II Artifact, T5, T6",d1 11:29:39,4 sec,Insight
+2,"Grade I Artifact, Muscle, T5, T6",d1 11:29:46,4 sec,Insight
+2,"Grade II Artifact, Mechanical, T3",d1 11:30:15,4 sec,Insight
+2,"Grade I Artifact, Muscle, Fp1, Fp2, T5, T6",d1 11:31:00,3 sec,Insight
+2,"Grade II Artifact, Mechanical,Fp1, Fp2",d1 11:31:49,3 sec,Insight
+2,"Grade II Artifact, Mechanical, T3, T5, T6",d1 11:32:11,1 sec,Insight
+2,"Grade II Artifact, Mechanical, T3, ",d1 11:33:10,3 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4, T4",d1 11:37:46,9 sec,Insight
+2,"Grade II Artifact, Mechanical, F7, F8, T3, T4",d1 11:38:17,7 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:40:22,13 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:40:36,12 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:41:58,10 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:42:14,7 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 11:42:25,499 sec,Insight
+2,"Grade I Artifact, Muscle T3, T4",d1 11:58:47,12 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4, T6",d1 11:59:45,65 sec,Insight
+2,"Grade I Artifact, Mechanical, F7, F8, T3, T4",d1 12:02:54,23 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4, T6",d1 12:03:38,16 sec,Insight
+2,"Grade II Artifact, Muscle, Fp1, Fp2, F7, F8, T3, T4",d1 12:06:23,331 sec,Insight
+2,"Grade II Artifact, Muscle, Fp1, Fp2, T5, T4, T6",d1 12:12:26,4 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 12:12:34,1 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T6",d1 12:12:41,5 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4, T5, T6",d1 12:13:12,7 sec,Insight
+2,"Grade II Artifact, Mechanical, F8, T3, T4",d1 12:13:37,2 sec,Insight
+2,"Grade II Artifact, Mechanical, All Channels",d1 12:13:39,11 sec,Insight
+1,"Grade II Artifact, Mechanical, F8",d1 11:13:38,3 sec,Insight
+1,"Grade II Artifact, Mechanical, C3, P4, Pz",d1 11:13:49,6 sec,Insight
+1,"Grade II Artifact, Mechanical, C3, P4, Pz",d1 11:13:58,6 sec,Insight
+1,"Grade II Artifact, Mechanical, C3, T3",d1 11:14:22,4 sec,Insight
+1,"Grade II Artifact, Mechanical, F7",d1 11:14:31,2 sec,Insight
+1,"Grade II Artifact, Mechanical, T5",d1 11:14:36,6 sec,Insight
+1,"Grade II Artifact, Mechanical, All Channels",d1 11:15:05,11 sec,Insight
+1,"Grade I Artifact, Mechanical, T5",d1 11:15:16,15 sec,Insight
+1,"Grade II Artifact, Mechanical, F7",d1 11:15:40,1 sec,Insight
+1,"Grade II Artifact, Mechanical, T5",d1 11:15:49,82 sec,Insight
+1,"Grade II Artifact, Mechanical, T5",d1 11:18:13,9 sec,Insight
+1,"Grade II Artifact, Mechanical, T5, Pz",d1 11:19:49,114 sec,Insight
+1,"Grade II Artifact, Mechanical, All Channels",d1 11:21:44,63 sec,Insight
+1,"Grade II Artifact, Mechanical, Fp1, Fp2, O2, T4, T5, T6",d1 11:33:28,24 sec,Insight
+1,"Grade II Artifact, Mechanical, All Channels",d1 11:33:52,201 sec,Insight
+1,"Grade I Artifact, Muscle, Fp1, Fp2, T5, T6",d1 11:37:33,33 sec,Insight
+1,"Grade II Artifact, Mechanical, Fp1, Fp2, T3, T4, T5, T6",d1 11:39:52,41 sec,Insight
+1,"Grade II Artifact, Mechanical, All Channels, Break in recording",d1 11:41:10,676 sec,Insight
+1,"Grade II Artifact, Mechanical, T4",d1 11:52:26,36 sec,Insight
+1,"Grade II Artifact, Mechanical, All Channels",d1 12:21:48,21 sec,Insight
+1,"Grade II Artifact, Mechanical, All Channels",d1 13:07:34,9 sec,Insight
+3,"Grade I Artifact, Muscle, Fp1, Fp2",d1 11:39:21,86 sec,Insight
+3,"Grade II Artifact, Mechanical, All Channels",d1 12:24:25,7 sec,Insight
+4,"Grade I Artifact, Muscle, Fp1, Fp2, F8, T6, F7, T4, F4",d1 11:11:32,194 sec,Insight
+4,"Grade II Artifact, Mechanical, All Channels",d1 11:55:24,3 sec,Insight
+4,"Grade II Artifact, Mechanical, F3",d1 11:20:13,4 sec,Insight
+4,"Grade II Artifact, Mechanical, F3, F4, F7, F8",d1 11:25:33,2 sec,Insight
+4,"Grade II Artifact, Mechanical, F3, F4, F8",d1 11:25:19,1 sec,Insight
+4,"Grade II Artifact, Mechanical, F4",d1 11:11:51,15 sec,Insight
+4,"Grade II Artifact, Mechanical, F4",d1 11:24:34,1 sec,Insight
+4,"Grade II Artifact, Mechanical, F4, F8, F7",d1 11:18:02,12 sec,Insight
+4,"Grade II Artifact, Mechanical, F4, F8, Fz",d1 11:25:53,2 sec,Insight
+4,"Grade II Artifact, Mechanical, P3",d1 11:16:10,88 sec,Insight
+4,"Grade II Artifact, Mechanical, P4",d1 11:18:55,1 sec,Insight
+4,"Grade II Artifact, Muscle, Fp1, Fp2, F4, F8, T4, T6",d1 12:00:15,12 sec,Insight
+5,"Grade I Artifact, Mechanical, T6",d1 11:58:00,16 sec,Insight
+5,"Grade I Artifact, Muscle, Fp1, Fp2, F3, T4, T6",d1 12:14:13,57 sec,Insight
+5,"Grade I Artifact, Muscle, Fp1, Fp2, F7, F3, T5, T6",d1 11:53:30,57 sec,Insight
+5,"Grade I Artifact, Muscle, Fp1, Fp2, T3, T4, T5, T6",d1 12:00:11,15 sec,Insight
+5,"Grade I Artifact, Muscle, Fp1, Fp2, T4, T6, T5",d1 11:32:56,323 sec,Insight
+5,"Grade I Artifact, Muscle, T6, Fp2, T4, T3",d1 11:27:31,30 sec,Insight
+5,"Grade II Artifact, Muscle, Fp1, Fp2, F7, F3, T3, T4, T5, T6",d1 12:04:25,5 sec,Insight
+10,"Grade I Artifact, Mechanical, All channels",d1 11:33:50,9 sec,Insight
+10,"Grade I Artifact, Mechanical, Fp2",d1 11:16:18,8 sec,Insight
+10,"Grade I Artifact, Muscle, All channels",d1 11:13:52,13 sec,Insight
+10,"Grade I Artifact, Muscle, All channels",d1 11:14:17,3 sec,Insight
+10,"Grade I Artifact, Muscle, T6, T5",d1 11:13:02,14 sec,Insight
+10,"Grade II Artifact, Mechanical, All channels",d1 11:14:39,17 sec,Insight
+10,"Grade II Artifact, Mechanical, All channels",d1 12:41:18,8 sec,Insight
+10,"Grade II Artifact, Mechanical, T4, F4",d1 11:16:46,6 sec,Insight
+10,"Grade II Artifact, Mechanical, T5, O1, O2",d1 11:17:02,3 sec,Insight
+10,"Grade II Artifact, Mechanical, T5, O1, O2",d1 11:53:23,3 sec,Insight
+11,"Grade I artifact, Muscle, T5",d1 12:27:35,2 sec,Insight
+11,"Grade I artifact, Muscle, T5, T6",d1 11:21:31,5 sec,Insight
+11,"Grade I artifact, Muscle, T5, T6, O2",d1 11:19:36,6 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 11:35:19,10 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 11:40:05,9 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 11:43:23,8 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 11:49:27,20 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 11:54:30,14 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 11:58:38,1 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 12:09:36,1 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 12:11:20,16 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 12:26:50,9 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 12:30:06,11 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 13:01:18,13 sec,Insight
+11,"Grade II artifact, Mechanical, All Channels",d1 13:15:35,8 sec,Insight
+11,"Grade II artifact, Mechanical, F4",d1 12:59:06,1 sec,Insight
+11,"Grade II artifact, Mechanical, Fp1",d1 12:14:23,1 sec,Insight
+11,"Grade II artifact, Mechanical, Fp2",d1 11:51:45,5 sec,Insight
+11,"Grade II artifact, Mechanical, Fp2",d1 12:56:19,1 sec,Insight
+11,"Grade II artifact, Mechanical, Fp2",d1 11:51:16,3 sec,Insight
+11,"Grade II artifact, Mechanical, T3",d1 12:11:37,5 sec,Insight
+11,"Grade II artifact, Mechanical, T3",d1 12:12:29,1 sec,Insight
+11,"Grade II artifact, Mechanical, T3",d1 12:33:07,1 sec,Insight
+11,"Grade II artifact, Mechanical, T3",d1 12:34:00,1 sec,Insight
+11,"Grade II artifact, Mechanical, T3",d1 12:36:24,1 sec,Insight
+11,"Grade II artifact, Mechanical, T3",d1 12:39:45,2 sec,Insight
+11,"Grade II artifact, Mechanical, T3, T5",d1 12:38:06,6 sec,Insight
+11,"Grade II artifact, Mechanical, T3, T6",d1 12:22:55,4 sec,Insight
+11,"Grade II artifact, Mechanical, T5",d1 11:52:30,5 sec,Insight
+11,"Grade II artifact, Mechanical, T5",d1 12:44:45,41 sec,Insight
+11,"Grade II artifact, Mechanical, T5",d1 12:56:52,52 sec,Insight
+11,"Grade II artifact, Mechanical, T5, F8, T4, P3",d1 12:53:25,4 sec,Insight
+11,"Grade II artifact, Mechanical, T5, T4, T6, O2",d1 12:25:07,2 sec,Insight
+12,"Grade II Artifact, Mechanical, All Channels",d1 12:25:14,11 sec,Insight
+12,"Grade II Artifact, Mechanical, Fz, Fp1, Fp2",d1 11:36:59,1 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 11:18:00,11 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 13:28:46,10 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 13:30:26,5 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 13:54:47,29 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 13:56:09,13 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 13:57:17,14 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 13:57:37,314 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 14:04:35,10 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 14:05:33,9 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 14:05:58,24 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 14:29:53,14 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 14:51:08,7 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 14:51:57,8 sec,Insight
+13,"Grade II Artifact, Mechanical, All Channels",d1 15:27:58,7 sec,Insight
+13,"Grade II Artifact, Mechanical, C4",d1 11:13:08,1 sec,Insight
+13,"Grade II Artifact, Mechanical, Cz",d1 13:32:20,14 sec,Insight
+13,"Grade II Artifact, Mechanical, F4, Fz, F3, F7, F8",d1 13:56:29,41 sec,Insight
+13,"Grade II Artifact, Mechanical, F8, O2, T5",d1 13:16:31,7 sec,Insight
+13,"Grade II Artifact, Mechanical, Fp1, Fp2",d1 11:12:34,1 sec,Insight
+13,"Grade II Artifact, Mechanical, Fp2, F4, C4, P4",d1 12:28:49,3 sec,Insight
+13,"Grade II Artifact, Mechanical, Fz, P4",d1 13:23:42,11 sec,Insight
+13,"Grade II Artifact, Mechanical, O2",d1 12:34:02,6 sec,Insight
+13,"Grade II Artifact, Mechanical, O2",d1 12:58:00,4 sec,Insight
+13,"Grade II Artifact, Mechanical, O2",d1 13:44:19,3 sec,Insight
+13,"Grade II Artifact, Mechanical, O2, O1",d1 13:54:21,2 sec,Insight
+13,"Grade II Artifact, Mechanical, O2, O1, P4, F8, T5, F3, P3",d1 13:46:33,17 sec,Insight
+13,"Grade II Artifact, Mechanical, P3, O2",d1 14:18:02,3 sec,Insight
+13,"Grade II Artifact, Mechanical, P4",d1 11:32:32,4 sec,Insight
+13,"Grade II Artifact, Mechanical, P4",d1 13:55:57,3 sec,Insight
+13,"Grade II Artifact, Mechanical, P4, F8",d1 13:27:03,4 sec,Insight
+13,"Grade II Artifact, Mechanical, P4, F8",d1 13:01:59,2 sec,Insight
+13,"Grade II Artifact, Mechanical, P4, F8",d1 13:17:20,12 sec,Insight
+13,"Grade II Artifact, Mechanical, P4, F8",d1 12:41:34,3 sec,Insight
+13,"Grade II Artifact, Mechanical, P4, F8",d1 13:17:38,287 sec,Insight
+13,"Grade II Artifact, Mechanical, P4, F8, T4",d1 11:32:05,8 sec,Insight
+13,"Grade II Artifact, Mechanical, P4, F8T4",d1 11:55:27,19 sec,Insight
+13,"Grade II Artifact, Mechanical, P4, O2, F8",d1 14:51:27,31 sec,Insight
+13,"Grade II Artifact, Mechanical, P4, O2, F8, T5",d1 13:23:04,32 sec,Insight
+13,"Grade II Artifact, Mechanical, T3, T5, O1, O2, P4",d1 13:22:41,21 sec,Insight
+13,"Grade II Artifact, Mechanical, T4",d1 15:14:40,2 sec,Insight
+13,"Grade II Artifact, Mechanical, T5",d1 13:24:45,11 sec,Insight
+13,"Grade II Artifact, Mechanical, T5, O1, O2",d1 12:49:14,9 sec,Insight
+13,"Grade II Artifact, Mechanical, T5, O2",d1 12:40:03,4 sec,Insight
+13,"Grade II Artifact, Mechanical, T5, P3, O2",d1 12:30:33,2 sec,Insight
+13,"Grade II Artifact, Mechanical, T5, P3, O2",d1 12:42:41,5 sec,Insight
+13,"Grade II Artifact, Mechanical, T5, P4",d1 13:31:19,6 sec,Insight
+13,"Grade II Artifact, Muscle, T5, P3, O2",d1 12:20:30,7 sec,Insight
+13,"Grade II Artifact, Mechanical, P4",d1 12:07:39,11 sec,Insight
