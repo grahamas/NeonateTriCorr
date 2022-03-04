@@ -38,28 +38,18 @@ function plot_eeg_traces(eeg::AbstractProcessedEEG; labels=eeg.labels, std_max=n
     return plt
 end
 
-function draw_eeg_traces(eeg::AbstractProcessedEEG; title=nothing, sample_rate=eeg.sample_rate, kwargs...)
-    plt = plot_eeg_traces(eeg; sample_rate=sample_rate, kwargs...)
-    axis = (height=50, width=500)
-    facet = (; linkyaxes = :none, grid=false, spines=false)
-    fg = draw(plt; axis, facet)
-    for axis_entry in fg.grid
-        ax = axis_entry.axis
-        tightlimits!(ax)
-        #hidedecorations!(ax)
-    end
-    if !isempty(eeg.seizure_annotations)
-        onsets, offsets = [ann[1] for ann in eeg.seizure_annotations], [ann[2] for ann in eeg.seizure_annotations]
-        vspan!.([ae.axis for ae in fg.grid], Ref(onsets), Ref(offsets), color=(:red, 0.2))
-    end
-    if !isempty(eeg.artifact_annotations)
-        onsets, offsets = [ann[1] for ann in eeg.artifact_annotations], [ann[2] for ann in eeg.artifact_annotations]
-        vspan!.([ae.axis for ae in fg.grid], Ref(onsets), Ref(offsets), color=(:blue, 0.2))
+function draw_eeg_traces(eeg::AbstractProcessedEEG; title=nothing, resolution, kwargs...)
+    fig = Figure(resolution=resolution)
+    times = get_times(eeg)
+    for i_sig ∈ 1:size(eeg.signals, 1)
+        ax = Axis(fig[i_sig,1])
+        plot_contribution!(ax, times, eeg.signals[i_sig,:]; eeg=eeg)
+        Label(fig[i_sig,2], eeg.labels[i_sig], tellwidth=true, tellheight=false, rotation=-pi/2)
     end
     if title !== nothing
-        Label(fg.figure[0,:], title, tellwidth=false)
+        Label(fig[0,:], title, tellwidth=false)
     end
-    fg
+    fig
 end
 
 function plot_eeg_hists(maybe_arr::AbstractArray; labels=nothing)
@@ -101,33 +91,51 @@ end
 plot_contributions(vec::AbstractVector; kwargs...) = plot_contributions(DataFrame([vec], :auto); kwargs...)
 plot_contributions(arr::AbstractMatrix; kwargs...) = plot_contributions(DataFrame(arr', :auto); kwargs...)
 
-function plot_contributions(df::DataFrame; eeg=nothing, title=nothing, n_motif_classes=14)
-    @assert (ncol(df) == n_motif_classes) (ncol(df), n_motif_classes)
-    plt = data(df) * mapping(1:n_motif_classes, row=dims(1) => x -> roman_encode(x[1])) * visual(Lines)
+noto_sans = assetpath("fonts", "NotoSans-Regular.ttf")
 
-    facet = (; linkyaxes = :none)
-    axis = (height=40, width=500, xlabel="", xgridvisible=false, ygridvisible=false, spinewidth=0)
+function plot_contributions(times::AbstractVector, data::AbstractArray, eeg::AbstractProcessedEEG; title=nothing, resolution)
+    n_rows = size(data, 1)
+    fig = Figure(resolution = resolution, font = noto_sans)
+    ax_plt_pairs = map(1:n_rows) do i_row
+        ax = Axis(fig[i_row, 1], xlabel="", xgridvisible=false, ygridvisible=false)
+        plt = plot_contribution!(ax, times, data[i_row,:]; 
+            eeg=eeg
+        )
+        motif=roman_encode(i_row)
+        Label(fig[i_row, 2], motif, tellheight=false, tellwidth=true, rotation=-pi/2)
+        (ax, plt)
+    end
+    if title !== nothing
+        Label(fig[0,:], title, tellwidth=false)
+    end
+    return fig
+end
 
-    fg = draw(plt; axis, facet)
-    axes = [ae.axis for ae in fg.grid]
-   # xlabel!.(axes, "")
-    tightlimits!.(axes)
-    hidespines!.(axes)
-    hidedecorations!.(axes, ticklabels=false)
+function plot_contribution(args...; title=nothing, resolution=(800,600), kwargs...)
+    fig = Figure(resolution=resolution)
+    ax = Axis(fig[1,1])
+    l = plot_contribution!(ax, args...; kwargs...)
+    if title !== nothing
+        Label(fig[0,:], title, tellwidth=false)
+    end
+    return (fig, ax, l)
+end
+
+function plot_contribution!(ax, times::AbstractVector, data::AbstractVector; eeg=nothing)
+    l = lines!(ax, times, data)
+    tightlimits!(ax); hidespines!(ax)
+    hidedecorations!(ax, ticklabels=false)
     if eeg !== nothing
         seizure_onsets = [on for (on,off) in eeg.seizure_annotations if on < off]
         seizure_offsets = [off for (on,off) in eeg.seizure_annotations if on < off]
         artifact_onsets = [on for (on,off) in eeg.artifact_annotations if on < off]
         artifact_offsets = [off for (on,off) in eeg.artifact_annotations if on < off]
-        if !isempty(seizure_onsets)
-            vspan!.(axes, Ref(artifact_onsets), Ref(artifact_offsets), color=(:red, 0.2))
-        end
         if !isempty(artifact_onsets)
-            vspan!.(axes, Ref(seizure_onsets), Ref(seizure_offsets), color=(:blue, 0.2))
+            vspan!(ax, artifact_onsets, artifact_offsets, color=(:red, 0.2))
+        end
+        if !isempty(seizure_onsets)
+            vspan!(ax, seizure_onsets, seizure_offsets, color=(:blue, 0.2))
         end
     end
-    if title !== nothing
-        Label(fg.figure[0,:], title, tellwidth=false)
-    end
-    return fg
+    l
 end

@@ -72,7 +72,7 @@ function ProcessedEEG(edf::EDF.File; exclude=[], seizure_annotations=Tuple{Float
     labels = [replace(replace(replace(sig.header.label, "-Ref" => ""), "-REF"=>""), "EEG " => "") for sig in edf.signals
             if !any(contains(sig.header.label, ex) for ex in exclude)
         ]
-    ProcessedEEGv5(signals, labels, sample_rate, start, duration, seizure_annotations, artifact_annotations)
+    ProcessedEEGv6(signals, labels, sample_rate, start, 0, duration, seizure_annotations, artifact_annotations)
 end
 
 function load_binary_annotations(eeg_num; filepath=scriptsdir("annotations_2017.mat"))
