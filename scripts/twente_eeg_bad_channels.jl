@@ -1,6 +1,6 @@
 using DataStructures
 
-helsinki_eeg_bad_channels = DefaultDict((key) -> (@warn "Bad channels undefined for patient $key"; []), Dict(
+twente_eeg_bad_channels = DefaultDict((key) -> (@warn "Bad channels undefined for patient $key"; []), Dict(
     "EEG001" => ["Fz"],
     "EEG002" => [],
     "EEG003" => ["Fz"],
