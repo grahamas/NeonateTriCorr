@@ -1,0 +1,37 @@
+using DataStructures
+
+helsinki_eeg_bad_channels = DefaultDict((key) -> (@warn "Bad channels undefined for patient $key"; []), Dict(
+    "EEG001" => ["Fz"],
+    "EEG002" => [],
+    "EEG003" => ["Fz"],
+    "EEG004" => ["Fz"],
+    "EEG006" => ["Fz"],
+    "EEG009" => ["Fz"],
+    "EEG010" => ["Fz"],
+    "EEG012" => ["Fz"],
+    "EEG013" => ["Fz"],
+    "EEG014" => ["Fz"],
+    "EEG015" => [], # may be artifact C4
+    "EEG016" => ["Fz"],
+    "EEG019" => ["Fz"],
+    "EEG020" => ["Fz"],
+    "EEG022" => ["Fz"],
+    "EEG023" => ["Fz"],
+    "EEG024" => ["Fz"],
+    "EEG026" => ["Fz"],
+    "EEG028" => ["Fz"],
+    "EEG030" => ["Fz"],
+    "EEG031" => ["Fz"],
+    "EEG033" => ["Fz"],
+    "EEG034" => ["Fz"],
+    "EEG035" => ["Fz"],
+    "EEG036" => ["Fz"],
+    "EEG037" => ["Fz"],
+    "EEG038" => ["Fz"],
+    "EEG039" => ["Fz"],
+    "EEG040" => ["Fz"],
+    "EEG043" => ["Fz"],
+    "EEG044" => ["Fz"],
+    "EEG046" => ["Fz"],
+    "EEG047" => ["Fz"], # may be artifact
+); passkey=true)
