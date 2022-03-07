@@ -211,9 +211,10 @@ function get_twente_artifact_annotations(annot::Vector{EDF.TimestampedAnnotation
     return Tuple{Float64,Float64}[]
 end
 
-load_twente_eeg(num::Number; kwargs...) = load_twente_eeg("EEG$(lpad(num, 3, "0")).edf"; kwargs...)
+load_twente_eeg(num::Number; kwargs...) = load_twente_eeg("EEG$(lpad(num, 3, "0"))"; kwargs...)
 function load_twente_eeg(eeg_name::String; exclude=["ECG", "Stimuli", "Stimulus", "Test", "Unspec", "Buf", "EOG", "EKG"])
-    edf = EDF.read(datadir("exp_raw", "twente", eeg_name))
+    eeg_name = splitext(eeg_name)[1]
+    edf = EDF.read(datadir("exp_raw", "twente", "$(eeg_name).edf"))
 
     annotations_idx = isa.(edf.signals, EDF.AnnotationsSignal)
     annotations = get_relevant_annotations(edf.signals[annotations_idx] |> only)
