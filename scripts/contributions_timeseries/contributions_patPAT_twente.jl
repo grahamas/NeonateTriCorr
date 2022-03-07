@@ -15,10 +15,10 @@ rms(xs) = sqrt(mean(xs .^ 2))
 
 moving_average(vs, n) = [mean(@view vs[(i-n+1):i]) for i in n:length(vs)]
 
-let eeg = load_twente_eeg(PAT), window=30,
+let eeg = load_twente_eeg("absence.edf"), window=30,
     snippets_duration=1, 
     λ_max = (8,25);
-eeg_name = "EEG$(lpad(PAT,3,"0"))"
+eeg_name = "absence"#"EEG$(lpad(PAT,3,"0"))"
 @info "Calculating contributions..."
 contributions = calc_class_contributions(eeg, Periodic(), AN_01norm;
         λ_max = λ_max,

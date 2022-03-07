@@ -194,11 +194,22 @@ function get_relevant_annotations(annot::EDF.AnnotationsSignal)
     filter(rec -> rec.annotations != [""], vcat(annot.records...))
 end
 
-function get_twente_seizure_annotations(tals::Vector{EDF.TimestampedAnnotationList})
+function get_twente_seizure_annotations(tals::Vector{EDF.TimestampedAnnotationList}; seizure_keywords=["seizure", "epi", "eppi"])
     seizure_bounds = Tuple{Float64,Float64}[]
     map(tals) do tal 
-        if "seizure" ∈ tal.annotations
-            push!(seizure_bounds, (tal.onset_in_seconds, tal.onset_in_seconds + tal.duration_in_seconds))
+        if any(
+                label -> any(
+                    occursin.(seizure_keywords, Ref(lowercase(label)))
+                ),
+                tal.annotations
+            )
+            onset = tal.onset_in_seconds
+            duration = tal.duration_in_seconds
+            if tal.duration_in_seconds !== nothing && tal.duration_in_seconds > 0
+                push!(seizure_bounds, (onset, onset + duration))
+            else
+                push!(seizure_bounds, (onset-1, onset+1))
+            end
         end
     end
     sort!(seizure_bounds)
@@ -206,9 +217,28 @@ function get_twente_seizure_annotations(tals::Vector{EDF.TimestampedAnnotationLi
     return seizure_bounds
 end
 
-function get_twente_artifact_annotations(annot::Vector{EDF.TimestampedAnnotationList})
-    @warn "Artifacts not parsed from EDF+ files (source: Twente)"
-    return Tuple{Float64,Float64}[]
+function get_twente_artifact_annotations(tals::Vector{EDF.TimestampedAnnotationList}; artifact_keywords=[])#["ogen", "hyperventilatie"])
+    artifact_bounds = Tuple{Float64,Float64}[]
+    @show tals
+    map(tals) do tal 
+        if any(
+                label -> any(
+                    occursin.(artifact_keywords, Ref(lowercase(label)))
+                ), 
+                tal.annotations
+            )
+            onset = tal.onset_in_seconds
+            duration = tal.duration_in_seconds
+            if tal.duration_in_seconds !== nothing && tal.duration_in_seconds > 0
+                push!(artifact_bounds, (onset, onset + duration))
+            else
+                push!(artifact_bounds, (onset-1, onset+1))
+            end
+        end
+    end
+    sort!(artifact_bounds)
+    collapse_tuples!(artifact_bounds)
+    return artifact_bounds
 end
 
 load_twente_eeg(num::Number; kwargs...) = load_twente_eeg("EEG$(lpad(num, 3, "0"))"; kwargs...)
