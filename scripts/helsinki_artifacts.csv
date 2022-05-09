@@ -150,9 +150,9 @@ Patient #,Text,Time,Duration,Origin
 31,"Grade II Artifact, Mechanical, All Electrodes",d1 12:09:54,1 sec,Insight
 44,"Grade II Artifact,  Mechanical, All Channels",d1 11:11:11,0 sec,Insight
 44,"Grade I Artifact,  Mechanical, T6, Present Throughout Record",d1 11:11:11,0 sec,Insight
-44,"Grade II Artifact,  Mechanical, T4",d1 11:12:35,5 sec,Insight
-44,"Grade II Artifact,  Mechanical, All Channels",d1 12:07:03,2 sec,Insight
-44,"Grade II Artifact,  Mechanical, All Channels",d1 12:05:16,3 sec,Insight
+44,"Grade II Artifact, Mechanical, T4",d1 11:12:35,5 sec,Insight
+44,"Grade II Artifact, Mechanical, All Channels",d1 12:07:03,2 sec,Insight
+44,"Grade II Artifact, Mechanical, All Channels",d1 12:05:16,3 sec,Insight
 47,"Grade I Artifact, Muscle, F7, T4, Present Throughout Recording",d1 11:11:11,0 sec,Insight
 47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:13,0 sec,Insight
 47,"Grade I Artifact, Mechanical, All Channels",d1 11:11:15,0 sec,Insight
@@ -463,3 +463,27 @@ Patient #,Text,Time,Duration,Origin
 13,"Grade II Artifact, Mechanical, T5, P4",d1 13:31:19,6 sec,Insight
 13,"Grade II Artifact, Muscle, T5, P3, O2",d1 12:20:30,7 sec,Insight
 13,"Grade II Artifact, Mechanical, P4",d1 12:07:39,11 sec,Insight
+6,"Grade I Artifact, Muscle, Fp1, Fp2",d1 11:14:32,1 sec,Insight
+6,"Grade I Artifact, Muscle, Fp1, Fp2",d1 11:17:32,1 sec,Insight
+6,"Grade II Artifact, Mechanical, All Channels",d1 11:29:33,11 sec,Insight
+6,"Grade II Artifact, Mechanical, All Channels",d1 11:41:42,9 sec,Insight
+6,"Grade II Artifact, Mechanical, All Channels",d1 11:57:51,9 sec,Insight
+6,"Grade II Artifact, Mechanical, All Channels",d1 12:29:23,7 sec,Insight
+7,"Grade II Artifact, Mechanical, T3",d1 11:11:30,1 sec,Insight
+7,"Grade II Artifact, Mechanical, T3",d1 11:17:54,1 sec,Insight
+7,"Grade II Artifact, Mechanical, T3",d1 11:18:24,6 sec,Insight
+7,"Grade II Artifact, Mechanical, F7",d1 11:20:06,1 sec,Insight
+7,"Grade II Artifact, Mechanical, Fp1",d1 11:20:14,0 sec,Insight
+7,"Grade II Artifact, Mechanical, Fz",d1 12:08:45,2 sec,Insight
+7,"Grade II Artifact, Mechanical, All Channels",d1 12:11:43,18 sec,Insight
+8,"Grade II Artifact, Mechanical, F3",d1 11:12:44,2 sec,Insight
+8,"Grade II Artifact, Mechanical, T4",d1 11:33:47,5 sec,Insight
+8,"Grade II Artifact, Mechanical, F3, Fz",d1 11:41:14,1 sec,Insight
+14,"Grade II Artifact, Mechanical, All Channels",d1 11:12:06,2 sec,Insight
+14,"Grade II Artifact, Mechanical, All Channels",d1 11:59:46,9 sec,Insight
+14,"Grade II Artifact, Mechanical, T6",d1 12:12:18,6 sec,Insight
+14,"Grade II Artifact, Mechanical, All Channels",d1 12:13:00,11 sec,Insight
+15,"Grade II Artifact, Mechanical, F3",d1 11:20:42,1 sec,Insight
+15,"Grade II Arifact, Mechanical, Fp2, F8, T3, T4",d1 12:11:01,1 sec,Insight
+15,"Grade II Arifact, Mechanical, Fp2",d1 12:41:23,16 sec,Insight
+15,"Grade II Arifact, Mechanical, T3",d1 12:46:39,1 sec,Insight
