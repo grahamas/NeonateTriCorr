@@ -29,10 +29,10 @@ eeg = snip_start(load_helsinki_eeg(PAT), discard_first_len)
 processed_data_filenames = readdir(datadir("exp_pro"))
 timeseries_filenames = processed_data_filenames[startswith.(processed_data_filenames, "timeseries_AN")]
 
-# eeg_fig = draw_eeg_traces(eeg; title = "EEG (Patient $PAT)", resolution=(1000,1600))
-# save(joinpath(plots_subdir, "pat$(PAT)_eeg_traces.png"), eeg_fig)
+eeg_fig = draw_eeg_traces(eeg; title = "EEG (Patient $PAT)", resolution=(1000,1600))
+save(joinpath(plots_subdir, "pat$(PAT)_eeg_traces.png"), eeg_fig)
 
-target_filenames = timeseries_filenames[occursin.("pat$(PAT)", timeseries_filenames)]
+target_filenames = timeseries_filenames[occursin.("pat$(PAT)_", timeseries_filenames)]
 DATA = load(datadir("exp_pro", target_filenames[end]))
 contributions = set_artifacts_missing(DATA["contributions"][:, discard_first_len+1:end], eeg, sample_rate=contributions_sampling_rate)
 
@@ -41,6 +41,9 @@ conts_fig = plot_contributions(times, contributions, eeg; title="Motif Contribut
 save(joinpath(plots_subdir, "pat$(PAT)_contributions.png"), conts_fig)
 
 rms_timeseries = [rms(contributions[:,i_sec]) for i_sec ∈ 1:size(contributions,2)]
+(rms_fig, ax, l) = plot_contribution(times, rms_timeseries; eeg=eeg, resolution=(1200, 500), title="Patient $PAT, RMS motif contributions (blue seizure; red artifact)")
+save(joinpath(plots_subdir, "pat$(PAT)_rms.png"), rms_fig)
+
 lowpass_rms = moving_average(rms_timeseries, window)
 lowpass_times = times[window:end]
 (rms_fig, ax, l) = plot_contribution(lowpass_times, lowpass_rms; eeg=eeg, resolution=(1200, 500), title="Patient $PAT, backward-lowpassed RMS motif contributions (blue seizure; red artifact; lowpass window = $(window)s)")

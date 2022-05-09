@@ -1,4 +1,4 @@
-using Distributed
+using Base.Threads
 using DrWatson
 @quickactivate "NeonateTriCorr"
 
@@ -8,7 +8,6 @@ using EDF, DSP, Statistics, StatsBase, CairoMakie
 ext = "png"
 using Random, JLD2
 using HypothesisTests, CSV
-using Base.Threads
 include(scriptsdir("include_src.jl"))
 
 rms(xs) = sqrt(mean(xs .^ 2))

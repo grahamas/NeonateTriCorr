@@ -35,7 +35,7 @@ timeseries_filenames = processed_data_filenames[startswith.(processed_data_filen
 eeg_fig = draw_eeg_traces(eeg; title = "$eeg_name", resolution=(1000,1600))
 save(joinpath(plots_subdir, "$(eeg_name)_eeg_traces.png"), eeg_fig)
 
-target_filenames = timeseries_filenames[occursin.("$(eeg_name)", timeseries_filenames)]
+target_filenames = timeseries_filenames[occursin.("$(eeg_name)_", timeseries_filenames)]
 DATA = load(datadir("exp_pro", target_filenames[end]))
 contributions = set_artifacts_missing(DATA["contributions"][:, discard_first_len+1:end], eeg, sample_rate=contributions_sampling_rate)
 
@@ -45,12 +45,14 @@ save(joinpath(plots_subdir, "$(eeg_name)_contributions.png"), conts_fig)
 
 rms_timeseries = [rms(contributions[:,i_sec]) for i_sec ∈ 1:size(contributions,2)]
 (rms_fig, ax, l) = plot_contribution(times, rms_timeseries; eeg=eeg, resolution=(1200, 500), title="$(eeg_name), RMS motif contributions (blue seizure; red artifact)")
+save(joinpath(plots_subdir, "$(eeg_name)_rms.png"), rms_fig)
+
 
 lowpass_rms = moving_average(rms_timeseries, window)
 lowpass_times = times[window:end]
 (rms_fig, ax, l) = plot_contribution(lowpass_times, lowpass_rms; eeg=eeg, resolution=(1200, 500), title="$(eeg_name), backward-lowpassed RMS motif contributions (blue seizure; red artifact; lowpass window = $(window)s)")
 
-save(joinpath(plots_subdir, "$(eeg_name)_rms.png"), rms_fig)
+save(joinpath(plots_subdir, "$(eeg_name)_rms_lowpass_$(window)s.png"), rms_fig)
 
 # (rms_fig, conts_fig)
 end#let

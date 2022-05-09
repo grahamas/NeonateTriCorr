@@ -30,7 +30,7 @@ timeseries_filenames = processed_data_filenames[startswith.(processed_data_filen
 eeg_fig = draw_eeg_traces(eeg; title = "EEG (Patient $PAT)", resolution=(1000,1600))
 save(joinpath(plots_subdir, "pat$(PAT)_eeg_traces.png"), eeg_fig)
 
-target_filenames = timeseries_filenames[occursin.("pat$(PAT)", timeseries_filenames)]
+target_filenames = timeseries_filenames[occursin.("pat$(PAT)_", timeseries_filenames)]
 DATA = load(datadir("exp_pro", target_filenames[end]))
 contributions = set_artifacts_missing(DATA["contributions"][:, discard_first_len+1:end], eeg, sample_rate=contributions_sampling_rate)
 
