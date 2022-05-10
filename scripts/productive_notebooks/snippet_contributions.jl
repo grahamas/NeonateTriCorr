@@ -105,7 +105,7 @@ function all_class_boxplots_control_vs_seizure(dct; show_outliers=true)
     labeled_values = hcat(values, labels)
     df = DataFrame(labeled_values, header)
     stacked_df = stack(df, 1:14)
-    plt = data(stacked_df) * mapping(:case, :value, layout=:variable) * visual(BoxPlot; show_outliers=show_outliers)
+    plt = data(stacked_df) * mapping(:case, :value => "A/N - 1", layout=:variable) * visual(BoxPlot; show_outliers=show_outliers)
     axis = (xticks = (1:2, ["control", "seizure"]), height=120, width=120)
     facet = (; linkyaxes = :none)
     draw(plt; axis, facet)
@@ -141,8 +141,12 @@ let n_snippets = 75,
     boundary = Periodic(),
     contribution_desc = "AN_znorm",#"AN_01norm",
     λ_max=(8,25),
-    selected_patients = [PAT]#,62,75];
-sub_dir = "snippet_contributions_by_class_$(typeof(boundary))_$(n_snippets)_$(contribution_desc)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS"))"
+    selected_patients = [PAT...]#,62,75];
+sub_dir = if PAT isa Number
+    "pat_$(PAT)_snippet_contributions_by_class_$(typeof(boundary))_$(n_snippets)_$(contribution_desc)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS"))"
+else 
+    "snippet_contributions_by_class_$(typeof(boundary))_$(n_snippets)_$(contribution_desc)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS"))"
+end
 mkpath(plotsdir(sub_dir))
 @everywhere Random.seed!(12345)
 

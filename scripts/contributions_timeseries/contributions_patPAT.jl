@@ -14,18 +14,18 @@ rms(xs) = sqrt(mean(xs .^ 2))
 
 moving_average(vs, n) = [mean(@view vs[(i-n+1):i]) for i in n:length(vs)]
 
-let eeg = load_helsinki_eeg(PAT), window=30,
+let eeg = load_helsinki_eeg(PAT), window=30, contributions_desc = "AN_01norm",
     snippets_duration=1;
     λ_max = (8,25)
-contributions = calc_class_contributions(eeg, Periodic(), AN_01norm;
+contributions = calc_class_contributions(eeg, Periodic(), snippet_contributions_fns[contributions_desc];
         λ_max = λ_max,
         n_motif_classes = 14,
         snippets_duration=snippets_duration
     )
 
-save(datadir("exp_pro", "timeseries_AN_$(λ_max[1])_$(λ_max[2])_pat$(PAT)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")).jld2"), Dict("contributions" => contributions))
+save(datadir("exp_pro", "timeseries_$(contributions_desc)_$(λ_max[1])_$(λ_max[2])_pat$(PAT)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")).jld2"), Dict("contributions" => contributions))
 
-plots_subdir = plotsdir("timeseries_AN_pat$(PAT)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS"))")
+plots_subdir = plotsdir("timeseries_$(contributions_desc)_pat$(PAT)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS"))")
 mkpath(plots_subdir)
 
 eeg_fig = draw_eeg_traces(eeg; title = "EEG (Patient $PAT)", resolution=(1000,1600))
