@@ -137,9 +137,9 @@ end # @everywhere begin
 
 
 using Dates
-let n_snippets = 75,
+let n_snippets = 200,
     boundary = Periodic(),
-    contribution_desc = "AN_znorm",#"AN_01norm",
+    contribution_desc = "AN_01norm",#"AN_01norm",
     λ_max=(8,25),
     selected_patients = [PAT...]#,62,75];
 sub_dir = if PAT isa Number
