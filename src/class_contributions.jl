@@ -1,11 +1,11 @@
 
-using TripleCorrelations
+using TripleCorrelations, Base.Threads
 
 ##### Contribution Metrics ######
 
 function A_01norm(snippet, boundary, λ_max)
     normalize_01!(snippet)
-    actual_contributions = sequence_class_tricorr_unrolled(snippet, boundary, λ_max)
+    actual_contributions = sequence_class_tricorr(snippet, boundary, λ_max)
     return actual_contributions
 end
 
@@ -17,8 +17,8 @@ end
 function AN_01norm_power(snippet, boundary, λ_max)
     snippet .^= 2
     normalize_01!(snippet)
-    actual_contributions = sequence_class_tricorr_unrolled(snippet, boundary, λ_max)
-    noise_contributions = sequence_class_tricorr_unrolled(shuffle(snippet), boundary, λ_max...) # FIXME should cache noise contributions... somehow.
+    actual_contributions = sequence_class_tricorr(snippet, boundary, λ_max)
+    noise_contributions = sequence_class_tricorr(shuffle(snippet), boundary, λ_max) # FIXME should cache noise contributions... somehow.
     return actual_contributions ./ noise_contributions
 end
 
