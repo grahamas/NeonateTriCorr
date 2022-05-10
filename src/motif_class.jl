@@ -1,7 +1,12 @@
 
+function offset_motif_numeral(n::Integer)
+    roman_encode_zero(n-1)
+end
+
 # https://www.rosettacode.org/wiki/Roman_numerals/Encode#Julia
-function roman_encode(n::Integer)
-    if n < 1 || n > 4999 throw(DomainError(n)) end
+function roman_encode_zero(n::Integer)
+    if n == 0 return "0" end
+    if n < 0 || n > 4999 throw(DomainError(n)) end
  
     DR = [["I", "X", "C", "M"] ["V", "L", "D", "MMM"]]
     rnum = ""

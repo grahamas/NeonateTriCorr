@@ -99,7 +99,7 @@ end
 
 function all_class_boxplots_control_vs_seizure(dct; show_outliers=true)
     control = dct[:control]; seizure = dct[:seizure]
-    header = [roman_encode.(1:14)..., "case"]
+    header = [offset_motif_numeral.(1:14)..., "case"]
     values = [control'; seizure']
     labels = [[1 for _ ∈ 1:size(control,:time)]...; [2 for _ ∈ 1:size(seizure,:time)]]
     labeled_values = hcat(values, labels)
@@ -127,7 +127,7 @@ function control_vs_seizure_all_class_statistics(seizure::NamedDimsArray{(:motif
         seizure_i = seizure[class_i,:]
         control_i = control[class_i,:]
         return (
-            class = roman_encode(class_i),
+            class = offset_motif_numeral(class_i),
             pvalue = pvalue(MannWhitneyUTest(seizure_i, control_i)),
             mean_effect = mean(seizure_i) - mean(control_i)
         )
@@ -203,7 +203,7 @@ for (pat_num, contributions_by_case) ∈ zip(selected_patients, eeg_contribution
     save(plotsdir(sub_dir, "pat$(pat_num)_comparing_$(contribution_desc)_$(typeof(boundary)).png"), fig)
     
     drw = all_class_boxplots_control_vs_seizure(contributions_by_case; show_outliers=true)
-   Label(drw.figure[0,:], "Patient $pat_num ($(typeof(boundary))", tellwidth=false)
+   Label(drw.figure[0,:], "Patient $pat_num ($(typeof(boundary)))", tellwidth=false)
    save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_$(contribution_desc)_$(typeof(boundary)).png"), drw)
 
    drw = all_class_boxplots_control_vs_seizure(contributions_by_case; show_outliers=false)
