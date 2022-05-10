@@ -57,7 +57,7 @@ scas = scatter!.(ax, log_tricorrs)
 ax.xlabel[] = "motif-class"
 ax.ylabel[] = "sign(contribution) * log10(abs(contribution))"
 ax.xticks = [1:5:14...]
-ax.xtickformat[] = xs -> (roman_encode ∘ Int).(xs)
+ax.xtickformat[] = xs -> (offset_motif_numeral ∘ Int).(xs)
 Legend(fig[1,2], scas, ["Segment $i" for i in 1:4])
 display(fig)
 save(plotsdir("log_class_contributions_raw_tricorr_$(round(Int,time())).png"), fig)
@@ -72,7 +72,7 @@ scas = scatter!.(ax, noise_ratio)
 ax.xlabel[] = "motif-class"
 ax.ylabel[] = "A/N"
 ax.xticks = [1:5:14...]
-ax.xtickformat[] = xs -> (roman_encode ∘ Int).(xs)
+ax.xtickformat[] = xs -> (offset_motif_numeral ∘ Int).(xs)
 Legend(fig[1,2], scas, ["Segment $i" for i in 1:4])
 display(fig)
 save(plotsdir("noise_ratio_raw_tricorr_$(round(Int,time())).png"), fig)

@@ -101,7 +101,7 @@ function plot_contributions(times::AbstractVector, data::AbstractArray, eeg::Abs
         plt = plot_contribution!(ax, times, data[i_row,:]; 
             eeg=eeg
         )
-        motif=roman_encode(i_row)
+        motif=offset_motif_numeral(i_row)
         Label(fig[i_row, 2], motif, tellheight=false, tellwidth=true, rotation=-pi/2)
         (ax, plt)
     end
