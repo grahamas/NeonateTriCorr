@@ -2,16 +2,23 @@
 using Distributed
 n_cores = length(Sys.cpu_info())
 n_threaded_workers = floor(Int, n_cores / Base.Threads.nthreads())
-addprocs(n_threaded_workers - nworkers())
+#addprocs(n_threaded_workers - nworkers())
 @show nprocs()
 @show Base.Threads.nthreads()
-@everywhere using DrWatson
-@everywhere quickactivate(@__DIR__, "NeonateTriCorr")
-@everywhere using Pkg
-@everywhere Pkg.instantiate()
 
-@everywhere begin
+#@everywhere begin
 
+#@everywhere using DrWatson
+#@everywhere quickactivate(@__DIR__, "NeonateTriCorr")
+#@everywhere using Pkg
+#@everywhere Pkg.instantiate()
+
+begin
+
+using DrWatson
+quickactivate(@__DIR__, "NeonateTriCorr")
+using Pkg
+#Pkg.instantiate()
 
 include(scriptsdir("include_src.jl"))
 
@@ -20,18 +27,6 @@ using EDF, DSP, Statistics, StatsBase
 using TripleCorrelations, ProgressMeter, Random, JLD2
 
 using HypothesisTests, CSV
-
-exclude_channels_by_patient = Dict(
-    75 => ["ECG","Resp","Cz","Fz"],
-    62 => ["ECG","Resp","Cz","Fz"], #unverified
-    50 => ["ECG","Resp","Cz"],
-    47 => ["ECG","Resp","Cz","Fz"],
-    44 => ["ECG","Resp","Cz"],
-    31 => ["ECG","Resp","Cz"],
-    21 => ["ECG","Resp","Cz","Fz"], #unverified
-    19 => ["ECG","Resp","Cz","Fz"], #unverified
-    9 => ["ECG","Resp","Cz"]
-)
 
 function calc_seizure_snippet_starts(eeg::AbstractProcessedEEG, snippets_duration)
     return vcat([collect(on:snippets_duration:off) for (on, off) ∈ eeg.seizure_annotations]...)
@@ -96,7 +91,7 @@ function control_vs_seizure_class_contributions(eeg::AbstractProcessedEEG;
     return (seizure=seizure_snippets_class_contribution, control=control_snippets_class_contribution)
 end
 
-function putative_signal_rms(arr; putative_signal_classes=[4,5,7,8,9,10,11,12,13])
+function putative_signal_rms(arr; putative_signal_classes=2:14)
     arr = NamedDimsArray{(:motif_class, :time)}(arr)
     signal_arr = arr[putative_signal_classes,:]
     dropdims(sqrt.(mean(signal_arr .^ 2, dims=1)), dims=:motif_class)
@@ -144,9 +139,9 @@ end # @everywhere begin
 using Dates
 let n_snippets = 75,
     boundary = Periodic(),
-    contribution_desc = "AN_01norm_power",
+    contribution_desc = "AN_znorm",#"AN_01norm",
     λ_max=(8,25),
-    selected_patients = [9,19,21,31,44,47,50]#,62,75];
+    selected_patients = [PAT]#,62,75];
 sub_dir = "snippet_contributions_by_class_$(typeof(boundary))_$(n_snippets)_$(contribution_desc)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS"))"
 mkpath(plotsdir(sub_dir))
 @everywhere Random.seed!(12345)

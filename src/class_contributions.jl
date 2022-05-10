@@ -11,7 +11,7 @@ end
 
 function AN_01norm(snippet, boundary, λ_max)
     normalize_01!(snippet)
-    bootstrap_normed_sequence_classes(snippet, boundary, λ_max; n_bootstraps=2, bootstraps_step=2)
+    bootstrap_normed_sequence_classes(snippet, boundary, λ_max; n_bootstraps=2, bootstraps_step=2) .- 1
 end
 
 function AN_01norm_power(snippet, boundary, λ_max)
@@ -19,12 +19,26 @@ function AN_01norm_power(snippet, boundary, λ_max)
     normalize_01!(snippet)
     actual_contributions = sequence_class_tricorr(snippet, boundary, λ_max)
     noise_contributions = sequence_class_tricorr(shuffle(snippet), boundary, λ_max) # FIXME should cache noise contributions... somehow.
-    return actual_contributions ./ noise_contributions
+    return ((actual_contributions ./ noise_contributions) .- 1)
+end
+
+function AN_znorm(snippet, boundary, λ_max)
+   n_bootstrap = 5
+   snippet .-= mean(snippet)
+   snippet ./= std(snippet)
+   actual_contributions = sequence_class_tricorr(snippet, boundary, λ_max)
+   noise_contributions = sequence_class_tricorr(shuffle(snippet), boundary, λ_max)
+   for _ in 1:(n_bootstrap-1)
+	noise_contributions += sequence_class_tricorr(shuffle(snippet), boundary, λ_max)
+   end
+   noise_contributions ./= n_bootstrap
+   actual_contributions .- noise_contributions
 end
 
 snippet_contributions_fns = Dict(
     "AN_01norm" => AN_01norm,
-    "AN_01norm_power" => AN_01norm_power
+    "AN_01norm_power" => AN_01norm_power,
+    "AN_znorm" => AN_znorm
 )
 
 ##### Calculating #####
