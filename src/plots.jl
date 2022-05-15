@@ -111,13 +111,17 @@ function plot_contributions(times::AbstractVector, data::AbstractArray, eeg::Abs
     return fig
 end
 
-function plot_contribution(args...; title=nothing, resolution=(800,600), kwargs...)
+function plot_contribution(args...; title=nothing, resolution=(800,600),eeg=nothing, kwargs...)
     fig = Figure(resolution=resolution)
     ax = Axis(fig[1,1])
-    l = plot_contribution!(ax, args...; kwargs...)
+    cons_ax = Axis(fig[2,1])
+    l = plot_contribution!(ax, args...; eeg=eeg, kwargs...)
     if title !== nothing
         Label(fig[0,:], title, tellwidth=false)
     end
+    plot_reviewer_consensus!(cons_ax, eeg)
+    linkxaxes!(ax, cons_ax)
+    rowsize!(fig.layout, 3, Auto(0.3))
     return (fig, ax, l)
 end
 
@@ -134,8 +138,15 @@ function plot_contribution!(ax, times::AbstractVector, data::AbstractVector; eeg
             vspan!(ax, artifact_onsets, artifact_offsets, color=(:red, 0.2))
         end
         if !isempty(seizure_onsets)
+            @warn "No seizures."
             vspan!(ax, seizure_onsets, seizure_offsets, color=(:blue, 0.2))
         end
     end
     l
+end
+
+function plot_reviewer_consensus!(ax, eeg::AbstractProcessedEEG)
+    lines!(ax, get_times(eeg, sample_rate=1), eeg.seizure_reviewers_count)
+    tightlimits!(ax); hidespines!(ax)
+    hidedecorations!(ax, ticklabels=false)
 end
