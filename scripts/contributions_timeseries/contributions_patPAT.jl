@@ -14,7 +14,7 @@ rms(xs) = sqrt(mean(xs .^ 2))
 
 moving_average(vs, n) = [mean(@view vs[(i-n+1):i]) for i in n:length(vs)]
 
-let eeg = load_helsinki_eeg(PAT), eeg = snip(eeg, 0, 0+300), 
+let eeg = load_helsinki_eeg(PAT),# eeg = snip(eeg, 0, 0+300), 
     window=30, contributions_desc = "A_znorm",
     snippets_duration=1;
     λ_max = (8,25)
