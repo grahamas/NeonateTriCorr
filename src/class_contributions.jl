@@ -35,10 +35,18 @@ function AN_znorm(snippet, boundary, λ_max)
    actual_contributions .- noise_contributions
 end
 
+function A_znorm(snippet, boundary, λ_max)
+    snippet .-= mean(snippet)
+    snippet ./= std(snippet)
+    actual_contributions = sequence_class_tricorr(snippet, boundary, λ_max)
+    actual_contributions
+ end
+
 snippet_contributions_fns = Dict(
     "AN_01norm" => AN_01norm,
     "AN_01norm_power" => AN_01norm_power,
-    "AN_znorm" => AN_znorm
+    "AN_znorm" => AN_znorm,
+    "A_znorm" => A_znorm
 )
 
 ##### Calculating #####
