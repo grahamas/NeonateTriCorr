@@ -139,7 +139,7 @@ end # @everywhere begin
 using Dates
 let n_snippets = 200,
     boundary = Periodic(),
-    contribution_desc = "AN_01norm",#"AN_01norm",
+    contribution_desc = "A_znorm",#"AN_01norm",
     λ_max=(8,25),
     selected_patients = [PAT...]#,62,75];
 sub_dir = if PAT isa Number
@@ -187,7 +187,7 @@ eeg_case_statistics_dfs = map(zip(selected_patients, eeg_contributions_by_case))
 end
 
 statistics_df = vcat(eeg_case_statistics_dfs...)
-CSV.write(plotsdir(sub_dir, "AN_$(typeof(boundary))_by_class_statistics.csv"), statistics_df)
+CSV.write(plotsdir(sub_dir, "$(contribution_desc)_$(typeof(boundary))_by_class_statistics.csv"), statistics_df)
 
 using CairoMakie
 for (pat_num, contributions_by_case) ∈ zip(selected_patients, eeg_contributions_by_case)
@@ -223,11 +223,11 @@ end
 #    end
 #    drw = all_class_boxplots_control_vs_seizure(contributions_by_case; show_outliers=true)
 #    Label(drw.figure[0,:], "Patient $pat_num", tellwidth=false)
-#    save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_AN.png"), drw)
+#    save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_$(contribution_desc).png"), drw)
 
 #    drw = all_class_boxplots_control_vs_seizure(contributions_by_case; show_outliers=false)
 #    Label(drw.figure[0,:], "Patient $pat_num", tellwidth=false)
-#    save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_AN_no_outliers.png"), drw)
+#    save(plotsdir(sub_dir, "pat$(pat_num)_N$(n_snippets)_by_class_$(contribution_desc)_no_outliers.png"), drw)
 
 #    contributions_by_case
 # end
