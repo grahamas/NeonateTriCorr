@@ -59,6 +59,7 @@ function ProcessedEEG(edf::EDF.File;
         seizure_annotations=Tuple{Float64,Float64}[], 
         artifact_annotations=Tuple{Float64,Float64}[], 
         label_replace = identity,
+        seizure_reviewers_count = Int[],
         kwargs...
     )
     @assert edf.header.is_contiguous
@@ -88,7 +89,11 @@ function ProcessedEEG(edf::EDF.File;
     )
     labels = [label_replace(sig.header.label) for sig in edf_signals
         ]
-    ProcessedEEGv7(signals, labels, sample_rate, 0, duration, seizure_annotations, artifact_annotations)
+    ProcessedEEGv7(signals, labels, sample_rate, 0, duration, seizure_annotations, artifact_annotations, seizure_reviewers_count)
+end
+
+function load_count_annotations(eeg_num; filepath=scriptsdir("annotations_2017.mat"))
+    map(Int, sum(matread(filepath)["annotat_new"][eeg_num]; dims=1)[:])
 end
 
 function load_binary_annotations(eeg_num; filepath=scriptsdir("annotations_2017.mat"))
@@ -113,8 +118,9 @@ function calc_seizure_bounds(annotations::AbstractVector)
 end
 
 function load_seizure_annotations(eeg_num; kwargs...)
-    second_annotations = load_binary_annotations(eeg_num; kwargs...)
-    calc_seizure_bounds(second_annotations)
+    second_annotations = load_count_annotations(eeg_num; kwargs...)
+    consensus_bounds = calc_seizure_bounds(second_annotations .== 3)
+    return (consensus_bounds, second_annotations)
 end
 
 function parse_grade(text)
@@ -182,11 +188,14 @@ end
 
 function load_helsinki_eeg(eeg_num::Int; excluded_artifact_grades=(1,))
     edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
+    seizures_start_stop, seizure_reviewers_count = load_seizure_annotations(eeg_num)
     ProcessedEEG(edf; 
         exclude=helsinki_eeg_bad_channels[eeg_num], 
-        seizure_annotations=load_seizure_annotations(eeg_num) |> collect, artifact_annotations=load_helsinki_artifact_annotations(eeg_num, Time(edf.header.start), excluded_artifact_grades),
+        seizure_annotations=seizures_start_stop, 
+        artifact_annotations=load_helsinki_artifact_annotations(eeg_num, Time(edf.header.start), excluded_artifact_grades),
         label_replace = (label) -> replace(replace(replace(label, "-Ref" => ""), "-REF"=>""), "EEG " => ""),
-        mains_hz=50
+        mains_hz=50,
+        seizure_reviewers_count = seizure_reviewers_count
     )
 end
 

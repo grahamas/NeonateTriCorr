@@ -10,6 +10,7 @@ struct ProcessedEEGv7{T,SIG<:NamedDimsArray{(:channel,:time),T},ANN_T,ANN<:Vecto
     duration::Float64
     seizure_annotations::ANN
     artifact_annotations::ANN
+    seizure_reviewers_count::Vector{Int}
 end
 
 function get_times(eeg::ProcessedEEGv7; sample_rate=eeg.sample_rate)
@@ -43,7 +44,7 @@ function restrict_ranges(tups, start, stop)
 end
 
 function snip_start(eeg::ProcessedEEGv7, snip_start_sec::Int)
-    snip(eeg, snip_start_sec, ceil(Int, eeg.duration))
+    snip(eeg, snip_start_sec, eeg.duration)
 end
 
 function snip(eeg::ProcessedEEGv7, duration)
@@ -58,7 +59,7 @@ function snip(eeg::ProcessedEEGv7, snip_start_sec::Int, snip_stop_sec::Int)
         snip_duration = (eeg.start + eeg.duration) - snip_start_sec
         snip_stop_sec = snip_start_sec + snip_duration
     end
-    snip_stop_idx = snip_stop_sec * eeg.sample_rate
+    snip_stop_idx = floor(Int, snip_stop_sec * eeg.sample_rate)
     ProcessedEEGv7(
         eeg.signals[:,snip_start_idx:snip_stop_idx],
         eeg.labels,
@@ -66,6 +67,7 @@ function snip(eeg::ProcessedEEGv7, snip_start_sec::Int, snip_stop_sec::Int)
         snip_start_sec,
         snip_duration |> float,
         restrict_ranges(eeg.seizure_annotations, snip_start_sec, snip_stop_sec),
-        restrict_ranges(eeg.artifact_annotations, snip_start_sec, snip_stop_sec)
+        restrict_ranges(eeg.artifact_annotations, snip_start_sec, snip_stop_sec),
+        eeg.seizure_reviewers_count[(snip_start_sec:snip_stop_sec) .+ 1]
     )
 end
