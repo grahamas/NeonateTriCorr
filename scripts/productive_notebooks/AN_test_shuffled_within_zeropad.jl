@@ -59,7 +59,7 @@ scas = scatter!.(ax, snippet_ans)
 ax.xlabel[] = "motif-class"
 ax.ylabel[] = "A/N"
 ax.xticks = [1:5:14...]
-ax.xtickformat[] = xs -> (roman_encode ∘ Int).(xs)
+ax.xtickformat[] = xs -> (offset_motif_numeral ∘ Int).(xs)
 Legend(fig[1,2], scas, ["Segment $i" for i in 1:4])
 display(fig)
 save(plotsdir("an_shuffled_raw_tricorr_zeropad_$(λ_max)_$(round(Int,time())).png"), fig)
