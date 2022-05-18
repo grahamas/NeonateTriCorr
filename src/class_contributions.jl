@@ -43,6 +43,14 @@ function A_01znorm(snippet, boundary, λ_max)
     actual_contributions
  end
 
+ function A_z01norm(snippet, boundary, λ_max)
+    snippet .-= mean(snippet)
+    snippet ./= std(snippet)
+    normalize_01!(snippet)
+    actual_contributions = sequence_class_tricorr(snippet, boundary, λ_max)
+    actual_contributions
+ end
+
 function A_znorm(snippet, boundary, λ_max)
     snippet .-= mean(snippet)
     snippet ./= std(snippet)
@@ -55,7 +63,8 @@ snippet_contributions_fns = Dict(
     "AN_01norm_power" => AN_01norm_power,
     "AN_znorm" => AN_znorm,
     "A_znorm" => A_znorm,
-    "A_01znorm" => A_01znorm
+    "A_01znorm" => A_01znorm,
+    "A_z01norm" => A_z01norm
 )
 
 ##### Calculating #####
