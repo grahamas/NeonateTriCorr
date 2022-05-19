@@ -3,7 +3,7 @@ using Makie
 # ANY SCRIPT USING THIS MUST IMPORT A MAKIE
 using DataFrames, AlgebraOfGraphics
 
-function plot_eeg_traces(eeg::AbstractProcessedEEG; labels=eeg.labels, std_max=nothing, sample_rate=eeg.sample_rate, downsample_factor=1, layout=:row)
+function plot_eeg_traces(eeg::AbstractProcessedEEG; labels=get_channel_names(eeg), std_max=nothing, sample_rate=eeg.sample_rate, downsample_factor=1, layout=:row)
     arr = NamedDimsArray{(:channel, :time)}(get_signal(eeg))
     arr = if std_max !== nothing
         arr = copy(arr)
@@ -16,7 +16,7 @@ function plot_eeg_traces(eeg::AbstractProcessedEEG; labels=eeg.labels, std_max=n
     else
         arr
     end
-    time = (0:downsample_factor:(size(arr,2)-1)) ./ sample_rate
+    time = get_times(eeg)[begin:downsample_factor:end]
     arr = arr[:,begin:downsample_factor:end]
     tbl = if labels === nothing
         Tables.table(arr', header=["$i" for i ∈ axes(arr, :channel)])
