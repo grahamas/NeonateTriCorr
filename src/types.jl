@@ -1,6 +1,6 @@
-using NamedDims, Dates
+using TriCorrApplications
 
-abstract type AbstractProcessedEEG end
+abstract type AbstractProcessedEEG <: AbstractEEG end
 
 struct ProcessedEEGv7{T,SIG<:NamedDimsArray{(:channel,:time),T},ANN_T,ANN<:Vector{NTuple{2,ANN_T}}} <: AbstractProcessedEEG
     signals::SIG
