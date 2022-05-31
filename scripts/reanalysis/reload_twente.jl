@@ -40,7 +40,7 @@ DATA = load(datadir("exp_pro", target_filenames[end]))
 contributions = set_artifacts_missing(DATA["contributions"][:, discard_first_len+1:end], eeg, sample_rate=contributions_sampling_rate)
 
 times = get_times(eeg, sample_rate=contributions_sampling_rate)
-conts_fig = plot_contributions(times, contributions, eeg; title="Motif Contributions ($(eeg_name))", resolution=(1000,1600))
+conts_fig = plot_contributions(eeg, times, contributions,; title="Motif Contributions ($(eeg_name))", resolution=(1000,1600))
 save(joinpath(plots_subdir, "$(eeg_name)_contributions.png"), conts_fig)
 
 rms_timeseries = [rms(contributions[:,i_sec]) for i_sec ∈ 1:size(contributions,2)]
