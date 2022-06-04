@@ -37,11 +37,6 @@ function download_helsinki_eegs(eeg_nums; target_dir=datadir("exp_raw", "helsink
     end
 end
 
-function normalize_01!(arr)
-    arr .-= minimum(arr)
-    arr ./= maximum(arr)
-    return arr
-end
 function process_signal(signal::EDF.Signal; seconds_per_record, asserted_samples_per_record, f_low=0.1, f_high=70., mains_hz, mains_bandwidth=10)
     @assert signal.header.samples_per_record == asserted_samples_per_record "Asserted $(asserted_samples_per_record) != $(signal.header.samples_per_record) (channel: $(signal.header.label))"
     sample_rate = asserted_samples_per_record / seconds_per_record

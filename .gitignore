@@ -413,7 +413,7 @@ $RECYCLE.BIN/
 
 ## Acknowledgements
 # Many thanks to `https://gitignore.io/`, written and maintained by Joe Blau, which contributed much material to this gitignore file.
-workspace.code-workspace
 *.png
 Manifest.toml
 remote_plots
+*.code-workspace

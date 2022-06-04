@@ -44,32 +44,6 @@ function calc_control_snippet_starts(eeg::AbstractProcessedEEG, snippets_duratio
     return vcat([(on+min_dist_to_seizure):snippets_duration:(off-min_dist_to_seizure) for (on, off) ∈ control_bounds if (off-min_dist_to_seizure)-(on+min_dist_to_seizure)>snippets_duration]...)
 end
 
-function calc_class_contributions(eeg::AbstractProcessedEEG, boundary, contributions_desc::String; λ_max,
-        n_motif_classes = 14, 
-        n_seconds = floor(Int, eeg.duration),
-        snippets_start_sec=0:(n_seconds-1),
-        snippets_duration=1
-    )
-    eeg_motif_class_contributions = NamedDimsArray{(:motif_class, :time)}(zeros(Float64, n_motif_classes, length(snippets_start_sec)))
-    # sig_lock = ReentrantLock()
-    # class_lock = ReentrantLock()
-    p = ProgressMeter.Progress(length(snippets_start_sec))
-    for (i_sec, snippet_start_sec) ∈ enumerate(snippets_start_sec)
-        i_start = round(Int, (snippet_start_sec*eeg.sample_rate)+1)
-        i_end = round(Int, (snippet_start_sec+snippets_duration)*eeg.sample_rate)
-        snippet = eeg.signals[:,i_start:i_end]
-        contributions = snippet_contributions_fns[contributions_desc](snippet, boundary, λ_max)
-        eeg_motif_class_contributions[:,i_sec] .= contributions
-        
-        ProgressMeter.next!(p)
-    end
-    # jldsave(datadir("eeg_class_actual_$(λ_max)_$(PAT).jld2"); class_contributions=eeg_motif_class_contributions)
-    #plot_contributions(eeg_motif_class_contributions; annotations=annotations, title=PAT)
-
-    eeg_motif_class_contributions
-
-end
-
 function control_vs_seizure_class_contributions(eeg::AbstractProcessedEEG; 
     boundary,
     contributions_desc,
