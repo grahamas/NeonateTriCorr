@@ -2,6 +2,7 @@ using TriCorrApplications
 
 abstract type AbstractProcessedEEG <: AbstractEEG end
 
+
 struct ProcessedEEGv7{T,SIG<:NamedDimsArray{(:channel,:time),T},ANN_T,ANN<:Vector{NTuple{2,ANN_T}}} <: AbstractProcessedEEG
     signals::SIG
     labels::Vector{String}
@@ -13,11 +14,15 @@ struct ProcessedEEGv7{T,SIG<:NamedDimsArray{(:channel,:time),T},ANN_T,ANN<:Vecto
     seizure_reviewers_count::Vector{Int}
 end
 
-function get_channel_names(eeg::ProcessedEEGv7)
+function TriCorrApplications.get_signal(eeg::ProcessedEEGv7)
+    eeg.signals
+end
+
+function TriCorrApplications.get_channel_names(eeg::ProcessedEEGv7)
     eeg.labels
 end
 
-function get_times(eeg::ProcessedEEGv7; sample_rate=eeg.sample_rate)
+function TriCorrApplications.get_times(eeg::ProcessedEEGv7; sample_rate=eeg.sample_rate)
     eeg.start:1/sample_rate:(eeg.start+eeg.duration-(1/sample_rate))
 end
 
