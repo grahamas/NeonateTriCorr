@@ -15,7 +15,7 @@ rms(xs) = sqrt(mean(xs .^ 2))
 moving_average(vs, n) = [mean(@view vs[(i-n+1):i]) for i in n:length(vs)]
 
 let eeg = load_helsinki_eeg(PAT),
-    snippets_duration=1, preproc!=zscore!, postproc!=thrEpredStdNorm!,
+    snippets_duration=1, preproc! = zscore!, postproc! = thrEpredStdNorm!,
     lag_extents = (8,25), plot_traces=true;
 
 unique_id = if @isdefined(parent_session_id)
@@ -24,6 +24,7 @@ else
     session_name = Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")
 end
 session_name = "tricorr_ts_$(fn2str(preproc!))_$(fn2str(postproc!))_snippets$(snippets_duration)_lagextents$(lag_extents[1])x$(lag_extents[2])_helsinkiEEG$(PAT)_$(unique_id)"
+@show session_name
 
 contributions = calc_class_contributions(eeg, Periodic(), preproc!, postproc!;
         lag_extents = lag_extents,

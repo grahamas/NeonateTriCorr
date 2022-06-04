@@ -1,4 +1,5 @@
 using TriCorrApplications
+using NamedDims
 
 abstract type AbstractProcessedEEG <: AbstractEEG end
 
