@@ -487,3 +487,6 @@ Patient #,Text,Time,Duration,Origin
 15,"Grade II Arifact, Mechanical, Fp2, F8, T3, T4",d1 12:11:01,1 sec,Insight
 15,"Grade II Arifact, Mechanical, Fp2",d1 12:41:23,16 sec,Insight
 15,"Grade II Arifact, Mechanical, T3",d1 12:46:39,1 sec,Insight
+50,"Grade I",d1 11:21:31,310 sec,Verbally Communicated Insight
+3,"Grade I",d1 11:49:06,205 sec,Verbally Communicated Insight
+3,"Grade I",d1 11:53:41,2 sec,Verbally Communicated Insight
