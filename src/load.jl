@@ -132,7 +132,7 @@ end
 function parse_start(text, start_time)
     d1, time = split(text)
     @assert d1 == "d1"
-    return Second(Time(time) - start_time).value |> Int
+    return Second(Time(time) - start_time).value |> Float64
 end
 function parse_artifact_duration(text)
     duration, sec = split(text)

@@ -4,11 +4,11 @@ using NamedDims
 abstract type AbstractProcessedEEG <: AbstractEEG end
 
 
-struct ProcessedEEGv7{T,SIG<:NamedDimsArray{(:channel,:time),T},ANN_T,ANN<:Vector{NTuple{2,ANN_T}}} <: AbstractProcessedEEG
+struct ProcessedEEGv7{T,SIG<:NamedDimsArray{(:channel,:time),T},ANN_T,ANN_T2,ANN<:Vector{Tuple{ANN_T,ANN_T2}}} <: AbstractProcessedEEG
     signals::SIG
     labels::Vector{String}
     sample_rate::Int
-    start::Int
+    start::ANN_T #because annotations are whole secs
     duration::Float64
     seizure_annotations::ANN
     artifact_annotations::ANN
@@ -24,7 +24,9 @@ function TriCorrApplications.get_channel_names(eeg::ProcessedEEGv7)
 end
 
 function TriCorrApplications.get_times(eeg::ProcessedEEGv7; sample_rate=eeg.sample_rate)
-    eeg.start:1/sample_rate:(eeg.start+eeg.duration-(1/sample_rate))
+    times = eeg.start:1/sample_rate:(eeg.start+eeg.duration-(1/sample_rate))
+    @show length(times)
+    times
 end
 
 function set_artifacts_missing(signal::AbstractMatrix, eeg::ProcessedEEGv7{T}; sample_rate=eeg.sample_rate) where T
@@ -35,7 +37,9 @@ function set_artifacts_missing(signal::AbstractMatrix, eeg::ProcessedEEGv7{T}; s
     return arr
 end
 function get_signal(eeg)
-    set_artifacts_missing(eeg.signals, eeg)
+    sig = set_artifacts_missing(eeg.signals, eeg)
+    @show size(sig)
+    sig
 end
 
 
@@ -61,8 +65,9 @@ function snip(eeg::ProcessedEEGv7, duration)
     snip(eeg, eeg.start, duration)
 end
 
-function snip(eeg::ProcessedEEGv7, snip_start_sec::Int, snip_stop_sec::Int)
-    snip_start_idx = snip_start_sec * eeg.sample_rate + 1
+function snip(eeg::ProcessedEEGv7, snip_start_sec::Int, snip_stop_sec)
+    @show snip_start_sec snip_stop_sec
+    snip_start_idx = round(Int, snip_start_sec * eeg.sample_rate + 1)
     snip_duration = snip_stop_sec - snip_start_sec
     if snip_stop_sec > (eeg.start + eeg.duration)
         @warn "Requested $snip_start_sec thru $snip_stop_sec, greater than duration $(eeg.duration)"
@@ -70,6 +75,7 @@ function snip(eeg::ProcessedEEGv7, snip_start_sec::Int, snip_stop_sec::Int)
         snip_stop_sec = snip_start_sec + snip_duration
     end
     snip_stop_idx = floor(Int, snip_stop_sec * eeg.sample_rate)
+    @show snip_start_idx snip_stop_idx
     ProcessedEEGv7(
         eeg.signals[:,snip_start_idx:snip_stop_idx],
         eeg.labels,
@@ -78,6 +84,6 @@ function snip(eeg::ProcessedEEGv7, snip_start_sec::Int, snip_stop_sec::Int)
         snip_duration |> float,
         restrict_ranges(eeg.seizure_annotations, snip_start_sec, snip_stop_sec),
         restrict_ranges(eeg.artifact_annotations, snip_start_sec, snip_stop_sec),
-        eeg.seizure_reviewers_count[(snip_start_sec:snip_stop_sec) .+ 1]
+        eeg.seizure_reviewers_count[((snip_start_sec+1):floor(Int, snip_stop_sec))]
     )
 end
