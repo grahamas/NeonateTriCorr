@@ -19,6 +19,12 @@ function TriCorrApplications.get_signal(eeg::ProcessedEEGv7)
     eeg.signals
 end
 
+function get_snippet(eeg::AbstractProcessedEEG, start_sec, snippet_duration_sec)
+    i_start = floor(Int, (snippet_start_sec*eeg.sample_rate)+1)
+    i_end = floor(Int, (snippet_start_sec+snippets_duration)*eeg.sample_rate)
+    get_signal(eeg)[:, i_start:i_end]
+end
+
 function TriCorrApplications.get_channel_names(eeg::ProcessedEEGv7)
     eeg.labels
 end
