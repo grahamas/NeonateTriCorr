@@ -113,7 +113,7 @@ function calc_seizure_bounds(annotations::AbstractVector)
     end
 end
 
-function load_seizure_annotations(eeg_num; kwargs...)
+function load_helsinki_seizure_annotations(eeg_num; kwargs...)
     second_annotations = load_count_annotations(eeg_num; kwargs...)
     consensus_bounds = calc_seizure_bounds(second_annotations .== 3)
     return (consensus_bounds, second_annotations)
@@ -184,7 +184,7 @@ end
 
 function load_helsinki_eeg(eeg_num::Int; excluded_artifact_grades=(1,))
     edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
-    seizures_start_stop, seizure_reviewers_count = load_seizure_annotations(eeg_num)
+    seizures_start_stop, seizure_reviewers_count = load_helsinki_seizure_annotations(eeg_num)
     ProcessedEEG(edf; 
         exclude=helsinki_eeg_bad_channels[eeg_num], 
         seizure_annotations=seizures_start_stop, 
@@ -286,36 +286,15 @@ function all_annotations()
     end
 end
 
-
-# function load_twente_eeg(eeg_name::String; exclude=[], mains_hz=50, kwargs...)
-#     edf = EDF.read(datadir("exp_raw", "twente", eeg_name))
-    
-#     data_signals_idx = isa.(edf.signals, EDF.Signal)
-
-#     labels = edf.signals[data_signals_idx] .|> (sig -> sig.header.label)
-
-#     seconds_per_record = edf.header.seconds_per_record
-#     samples_per_record = edf.signals[findfirst(data_signals_idx)].header.samples_per_record
-#     record_count = edf.header.record_count
-#     @assert seconds_per_record == 1
-#     sample_rate = Int(seconds_per_record * samples_per_record)
-
-#     duration = record_count * seconds_per_record
-
-#     annotations = get_relevant_annotations(edf.signals[annotations_idx] |> only)
-#     seizure_annotations = get_twente_seizure_annotations(annotations)
-#     artifact_annotations = get_twente_artifact_annotations(annotations)
-
-#     signals = NamedDimsArray{(:channel,:time)}(
-#         vcat(
-#             [process_signal(sig; seconds_per_record = seconds_per_record, asserted_samples_per_record = samples_per_record, kwargs...) for sig in edf.signals
-#              if !any(contains(sig.header.label, ex) for ex in exclude)
-#             ]...
-#         )
-#     )
-
-#     ProcessedEEGv7(
-#         signals, labels, sample_rate, 0, duration, 
-#         seizure_annotations, artifact_annotations
-#     )
-# end
+function load_most_recent_jld2(match_str, dir)
+    all_saves = mapreduce(vcat, walkdir(dir)) do (root, dirs, files)
+        basenames = filter(Base.Fix1(occursin, "jld2"), files)
+        matching_names = filter(Base.Fix1(occursin, match_str), basenames)
+        joinpath.(Ref(root), matching_names)
+    end
+    most_recent_save = sort!(all_saves; by=x -> stat(x).mtime)[end]
+    @warn "Loading $most_recent_save..."
+    jld_dict = load(most_recent_save)
+    @warn "done."
+    return jld_dict
+end
