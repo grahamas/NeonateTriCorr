@@ -116,18 +116,18 @@ function calc_class_contributions(eeg::AbstractProcessedEEG,
     snippets_start_sec=0:snippets_duration:(n_seconds-1)
     eeg_motif_class_contributions = NamedDimsArray{(:motif_class, :time)}(zeros(Union{Float64,Missing}, n_motif_classes, length(snippets_start_sec)))
 
-    snippet_generator = (get_snippet(eeg, start, snippets_duration) for start in snippets_start_sec)
+    snippet_generator = (get_signal_snippet(eeg, start, start+snippets_duration) for start in snippets_start_sec)
     precalced_postproc! = precalculate(postproc!, assumption, condition, snippet_generator, boundary, lag_extents)
 
     @threads for i_sec ∈ 1:length(snippets_start_sec)
-        snippet = get_snippet(eeg, snippets_start_sec[i_sec], snippets_duration)
+        snippet = get_signal_snippet(eeg, snippets_start_sec[i_sec], snippets_start_sec[i_sec]+snippets_duration)
         if any(ismissing.(snippet))
             eeg_motif_class_contributions[:,i_sec] .= missing
         else
-            processed_snippet = copy(snippet)
-            preproc!(processed_snippet, snippet)
+            processed_snippet = Array{Float64}(copy(snippet))
+            preproc!(processed_snippet, processed_snippet)
             contributions = sequence_class_tricorr(processed_snippet, boundary, lag_extents)
-            precalced_postproc!(eeg_motif_class_contributions[:,i_sec], contributions, processed_snippet)
+            precalced_postproc!(view(eeg_motif_class_contributions, :, i_sec), contributions, processed_snippet)
         end
         #ProgressMeter.next!(p)
     end
