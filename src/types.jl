@@ -15,13 +15,9 @@ struct ProcessedEEGv7{T,SIG<:NamedDimsArray{(:channel,:time),T},ANN_T,ANN_T2,ANN
     seizure_reviewers_count::Vector{Int}
 end
 
-function TriCorrApplications.get_signal(eeg::ProcessedEEGv7)
-    eeg.signals
-end
-
-function get_snippet(eeg::AbstractProcessedEEG, start_sec, snippet_duration_sec)
+function get_signal_snippet(eeg::AbstractProcessedEEG, snippet_start_sec, snippet_stop_sec)
     i_start = floor(Int, (snippet_start_sec*eeg.sample_rate)+1)
-    i_end = floor(Int, (snippet_start_sec+snippets_duration)*eeg.sample_rate)
+    i_end = floor(Int, (snippet_stop_sec)*eeg.sample_rate)
     get_signal(eeg)[:, i_start:i_end]
 end
 
@@ -31,7 +27,6 @@ end
 
 function TriCorrApplications.get_times(eeg::ProcessedEEGv7; sample_rate=eeg.sample_rate)
     times = eeg.start:1/sample_rate:(eeg.start+eeg.duration-(1/sample_rate))
-    @show length(times)
     times
 end
 
@@ -42,9 +37,8 @@ function set_artifacts_missing(signal::AbstractMatrix, eeg::ProcessedEEGv7{T}; s
     arr[:, artifact_times] .= missing
     return arr
 end
-function get_signal(eeg)
+function TriCorrApplications.get_signal(eeg::ProcessedEEGv7)
     sig = set_artifacts_missing(eeg.signals, eeg)
-    @show size(sig)
     sig
 end
 
@@ -65,10 +59,6 @@ end
 
 function snip_start(eeg::ProcessedEEGv7, snip_start_sec::Int)
     snip(eeg, snip_start_sec, eeg.duration)
-end
-
-function snip(eeg::ProcessedEEGv7, duration)
-    snip(eeg, eeg.start, duration)
 end
 
 function snip(eeg::ProcessedEEGv7, snip_start_sec::Int, snip_stop_sec)
