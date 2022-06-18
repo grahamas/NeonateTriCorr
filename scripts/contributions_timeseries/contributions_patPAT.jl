@@ -1,3 +1,5 @@
+force_recalculate_contributions = false
+
 using DrWatson
 @quickactivate "NeonateTriCorr"
 
@@ -26,20 +28,26 @@ unique_id = if @isdefined(parent_session_id)
 else
     Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")
 end
-session_name = "tricorr_ts_$(fn2str(preproc!))_$(fn2str(postproc!))_$(obj2str(assumption))_$(obj2str(conditioned_on))_snippets$(snippets_duration)_lagextents$(lag_extents[1])x$(lag_extents[2])_helsinkiEEG$(PAT)_$(unique_id)"
+target_match_str = "tricorr_ts_$(fn2str(preproc!))_$(fn2str(postproc!))_$(obj2str(assumption))_$(obj2str(conditioned_on))_snippets$(snippets_duration)_lagextents$(lag_extents[1])x$(lag_extents[2])_helsinkiEEG$(PAT)_"
+session_name = "$(target_match_str)$(unique_id)"
 @show session_name
 
 if preproc! == zscore!
     preproc! = (o,i) -> zscore!(o,i,mean(i),std(i))
 end
-contributions = calc_class_contributions(eeg, Periodic(), 
-        preproc!, postproc!,
-        assumption, conditioned_on
-        ;
-        lag_extents = lag_extents,
-        n_motif_classes = 14,
-        snippets_duration=snippets_duration
-    )
+maybe_jld_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
+contributions = if isnothing(maybe_file) || force_recalculate_contributions
+    calc_class_contributions(eeg, Periodic(), 
+            preproc!, postproc!,
+            assumption, conditioned_on
+            ;
+            lag_extents = lag_extents,
+            n_motif_classes = 14,
+            snippets_duration=snippets_duration
+        )
+else
+    maybe_jld_dict["contributions"]
+end
 
 save(datadir("exp_pro", "$(session_name).jld2"), Dict("contributions" => contributions))
 
@@ -74,3 +82,5 @@ contributions
 end
 
 # single thread:   66.249 s (90203946 allocations: 8.51 GiB)
+
+force_recalculate_contributions = false
