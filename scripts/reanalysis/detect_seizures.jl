@@ -13,17 +13,18 @@ using KernelDensity
 
 include(scriptsdir("include_src.jl"))
 
-all_motif_results_df = load(datadir("motif_results_df.jld2"))["motif_results_df"]
+min_reviewers_per_seizure = 2
+all_motif_results_df = load(datadir("motif_results_df_reviewers$(min_reviewers_per_seizure).jld2"))["motif_results_df"]
 snippets_duration = 1
-save_dir = plotsdir("tricorr_ts_zscore_zscore_IndStdNormal_None_snippets$(snippets_duration)_lagextents8x25_helsinkiEEG_$(Dates.now())")
+contributions_spec = "tricorr_ts_zscore_zscore_IndStdNormal_None_snippets$(snippets_duration)_lagextents8x25_helsinkiEEG"
+save_dir = plotsdir("$(contributions_spec)_$(Dates.now())")
 mkpath(save_dir)
 
 drws = mapreduce(vcat, [1:15..., 19,31,44,47,50,62]) do PAT
     rolling_window_len = 60
     min_dist_to_seizure = 30
-    min_reviewers_per_seizure = 2
 
-    target_match_str = "tricorr_ts_zscore_zscore_IndStdNormal_None_snippets$(snippets_duration)_lagextents8x25_helsinkiEEG$(PAT)_"
+    target_match_str = "$(contributions_spec)$(PAT)_"
 
     jld_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
     contributions = jld_dict["contributions"]

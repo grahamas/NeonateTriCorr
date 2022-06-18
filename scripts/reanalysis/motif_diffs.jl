@@ -16,7 +16,8 @@ motif_results = mapreduce(vcat, [1:15..., 19,31,44,47,50,62]) do PAT
 
 eeg = load_helsinki_eeg(PAT)
 
-min_reviewers_per_seizure=3
+# MUST DEFINE min_reviewers_per_seizure
+#min_reviewers_per_seizure=3
 min_snippets_for_comparison = 150
 
 min_dist_to_seizure = 30
@@ -118,4 +119,4 @@ fig_significance = draw_significances_plot!(motif_results_df)
 fig_Δμ = draw_Δμ_plot(motif_results_df)
 fig_Δσ = draw_Δσ_plot(motif_results_df)
 
-@save datadir("motif_results_df.jld2") motif_results_df
+@save datadir("motif_results_df_reviewers$(min_reviewers_per_seizure).jld2") motif_results_df
