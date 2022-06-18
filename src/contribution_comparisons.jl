@@ -92,3 +92,23 @@ function control_vs_seizure_all_class_statistics(seizure::NamedDimsArray{(:motif
         )
     end)
 end 
+
+
+
+function estimate_JSDistance(control, seizure; show_plots=false)
+    combined_kde = kde(vcat(control, seizure))
+    common_grid = combined_kde.x
+    control_kde = kde(control, common_grid)
+    seizure_kde = kde(seizure, common_grid)
+
+    if show_plots
+        plt = plot(control_kde.x, control_kde.density)
+        plot!(plt.axis, seizure_kde.x, seizure_kde.density, color=:red)
+        display(plt)
+    end
+
+    control_dist = control_kde.density ./ sum(control_kde.density)
+    seizure_dist = seizure_kde.density ./ sum(seizure_kde.density)
+
+    sqrt(evaluate(JSDivergence(), control_dist, seizure_dist))
+end

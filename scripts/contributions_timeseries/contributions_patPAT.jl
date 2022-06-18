@@ -14,7 +14,7 @@ include(scriptsdir("include_src.jl"))
 rms(xs) = sqrt(mean(xs .^ 2))
 moving_average(vs, n) = [mean(@view vs[(i-n+1):i]) for i in n:length(vs)]
 
-PAT = 1
+PAT = 75
 
 contributions_PAT = let eeg = load_helsinki_eeg(PAT),# eeg = snip(eeg, 600, 975),
     snippets_duration=1, preproc! = zscore!, postproc! = zscore!,

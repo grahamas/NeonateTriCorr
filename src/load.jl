@@ -113,9 +113,9 @@ function calc_seizure_bounds(annotations::AbstractVector)
     end
 end
 
-function load_helsinki_seizure_annotations(eeg_num; kwargs...)
+function load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=3, kwargs...)
     second_annotations = load_count_annotations(eeg_num; kwargs...)
-    consensus_bounds = calc_seizure_bounds(second_annotations .== 3)
+    consensus_bounds = calc_seizure_bounds(second_annotations .>= min_reviewers_per_seizure)
     return (consensus_bounds, second_annotations)
 end
 
@@ -182,9 +182,9 @@ function load_helsinki_artifact_annotations(eeg_num, start_time::Time, excluded_
     return possibly_intersecting_tuples
 end
 
-function load_helsinki_eeg(eeg_num::Int; excluded_artifact_grades=(1,))
+function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_artifact_grades=(1,))
     edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
-    seizures_start_stop, seizure_reviewers_count = load_helsinki_seizure_annotations(eeg_num)
+    seizures_start_stop, seizure_reviewers_count = load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=min_reviewers_per_seizure)
     ProcessedEEG(edf; 
         exclude=helsinki_eeg_bad_channels[eeg_num], 
         seizure_annotations=seizures_start_stop, 
