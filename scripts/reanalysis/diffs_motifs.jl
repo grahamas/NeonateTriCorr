@@ -18,7 +18,7 @@ eeg = load_helsinki_eeg(PAT)
 
 # MUST DEFINE min_reviewers_per_seizure
 #min_reviewers_per_seizure=3
-min_snippets_for_comparison = 150
+min_snippets_for_comparison = 80
 
 min_dist_to_seizure = 30
 snippets_duration = 1
@@ -26,10 +26,13 @@ target_match_str = "tricorr_ts_zscore_zscore_IndStdNormal_None_snippets$(snippet
 save_dir = plotsdir("$(target_match_str)$(Dates.now())")
 mkpath(save_dir)
 
+signal_times = get_times(eeg, sample_rate=1/snippets_duration)
+
 seizure_bounds, consensus = load_helsinki_seizure_annotations(PAT; min_reviewers_per_seizure=min_reviewers_per_seizure)
 
 jld_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
 contributions = jld_dict["contributions"]
+@show size(contributions)
 
 rolling_window = 60
 rolling_std_z = mapreduce(hcat, 1:14) do motif_num
@@ -71,9 +74,9 @@ if isempty(seizure_bounds)
     return []
 end
 
-control_snippets = calc_control_snippet_starts_incl_artifacts(seizure_bounds, size(contributions, :time), snippets_duration, min_dist_to_seizure)
-seizure_snippets = mapreduce(vcat, seizure_bounds) do (on, off)
-    on:snippets_duration:off
+control_snippets = calc_control_snippet_starts_incl_artifacts(seizure_bounds, eeg.duration, signal_times, min_dist_to_seizure)
+seizure_snippets = mapreduce((x,y) -> x .|| y, seizure_bounds) do (on, off)
+    on .<= (signal_times .+ 1)< off
 end
 
 

@@ -16,8 +16,9 @@ include(scriptsdir("include_src.jl"))
 min_reviewers_per_seizure = 3
 all_motif_results_df = load(datadir("motif_results_df_reviewers$(min_reviewers_per_seizure).jld2"))["motif_results_df"]
 snippets_duration_s = 1
+alerts_grace_s = 60
 contributions_spec = "tricorr_ts_zscore_zscore_IndStdNormal_None_snippets$(snippets_duration_s)_lagextents8x25_helsinkiEEG"
-save_dir = plotsdir("$(contributions_spec)_reviewers$(min_reviewers_per_seizure)_$(Dates.now())")
+save_dir = plotsdir("motif0_$(contributions_spec)_reviewers$(min_reviewers_per_seizure)_$(Dates.now())")
 mkpath(save_dir)
 
 drws = mapreduce(vcat, [1:15..., 19,31,44,47,50,62]) do PAT
@@ -33,16 +34,16 @@ drws = mapreduce(vcat, [1:15..., 19,31,44,47,50,62]) do PAT
 
     @info "Loading EEG $(PAT)..."
     eeg = load_helsinki_eeg(PAT; min_reviewers_per_seizure = min_reviewers_per_seizure)
-    signal_times = get_times(eeg; sample_rate=snippets_duration_s)
+    signal_times = get_times(eeg, sample_rate=snippets_duration_s)
     @info "done."
 
     @info "Calculating signal traces..."
     θ = 3
     motif_results_df = filter(:patient => p -> p == PAT, all_motif_results_df)
-    max_significance_μ_weights = motif_weights_based_on_pvalues(motif_results_df, :Δμ, 5)
+    max_significance_μ_weights = motif0_weight_based_effect(motif_results_df, :Δμ, 5)
     detections_mean = apply_rolling_deviation_window(contributions, mean, rolling_window_len) * max_significance_μ_weights
 
-    max_significance_σ_weights = motif_weights_based_on_pvalues(motif_results_df, :Δσ, 5)
+    max_significance_σ_weights = motif0_weight_based_effect(motif_results_df, :Δσ, 5)
     detections_std = apply_rolling_deviation_window(contributions, std, rolling_window_len) * max_significance_μ_weights
 
     @info "done. Plotting..."
@@ -54,8 +55,8 @@ drws = mapreduce(vcat, [1:15..., 19,31,44,47,50,62]) do PAT
     ax_std = Axis(fig[2,1:2]; ylabel = "mean σ (five most significant motifs)")
     ax_rev = Axis(fig[3,1:2]; ylabel = "# reviewers", xlabel = "time")
     TriCorrApplications.plot_reviewer_consensus!(ax_rev, eeg)
-    TriCorrApplications.plot_contribution!(ax_mean, eeg, get_times(eeg, sample_rate=1), detections_mean)
-    TriCorrApplications.plot_contribution!(ax_std, eeg, get_times(eeg, sample_rate=1), detections_std)
+    TriCorrApplications.plot_contribution!(ax_mean, eeg, signal_times, detections_mean)
+    TriCorrApplications.plot_contribution!(ax_std, eeg, signal_times, detections_std)
     hlines!(ax_mean, [θ], color=:red, linestyle=:dash)
 
     fig[:,end+1] = roc_column = GridLayout()
