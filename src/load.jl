@@ -51,11 +51,12 @@ function process_signal(signal::EDF.Signal; seconds_per_record, asserted_samples
 end
 
 function ProcessedEEG(edf::EDF.File; 
-        exclude=[], 
+        exclude_channels=[], 
         seizure_annotations=Tuple{Float64,Float64}[], 
         artifact_annotations=Tuple{Float64,Float64}[], 
         label_replace = identity,
         seizure_reviewers_count = Int[],
+        excluded_artifact_grades,
         kwargs...
     )
     @assert edf.header.is_contiguous
@@ -65,7 +66,7 @@ function ProcessedEEG(edf::EDF.File;
     edf_signals = [sig for sig ∈ edf.signals
         if (
             sig isa EDF.Signal &&
-            !any(contains(lowercase(sig.header.label), lowercase(ex)) for ex in exclude)
+            !any(contains(lowercase(sig.header.label), lowercase(ex)) for ex in exclude_channels)
         )
     ]
     first_samples_per_record = edf_signals[begin].header.samples_per_record
@@ -85,7 +86,7 @@ function ProcessedEEG(edf::EDF.File;
     )
     labels = [label_replace(sig.header.label) for sig in edf_signals
         ]
-    ProcessedEEGv7(signals, labels, sample_rate, 0, duration, seizure_annotations, artifact_annotations, seizure_reviewers_count)
+    ProcessedEEGv8(signals, labels, sample_rate, 0, duration, seizure_annotations, artifact_annotations, seizure_reviewers_count, excluded_artifact_grades)
 end
 
 function load_count_annotations(eeg_num; filepath=scriptsdir("annotations_2017.mat"))
@@ -191,7 +192,8 @@ function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_a
         artifact_annotations=load_helsinki_artifact_annotations(eeg_num, Time(edf.header.start), excluded_artifact_grades),
         label_replace = (label) -> replace(replace(replace(label, "-Ref" => ""), "-REF"=>""), "EEG " => ""),
         mains_hz=50,
-        seizure_reviewers_count = seizure_reviewers_count
+        seizure_reviewers_count = seizure_reviewers_count,
+        excluded_artifact_grades = excluded_artifact_grades
     )
 end
 
@@ -256,6 +258,7 @@ function load_twente_eeg(eeg_name::String; exclude=["ECG", "Stimuli", "Stimulus"
     seizure_annotations = get_twente_seizure_annotations(annotations)
     artifact_annotations = get_twente_artifact_annotations(annotations)
 
+    @error "Unclear what artifact grades are excluded from Twente dataset"
     ProcessedEEG(edf; 
         exclude=[exclude..., twente_eeg_bad_channels[eeg_name]...], 
         seizure_annotations=seizure_annotations, 
@@ -297,4 +300,18 @@ function load_most_recent_jld2(match_str, dir)
     jld_dict = load(most_recent_save)
     @warn "done."
     return jld_dict
+end
+
+function save_mat(eeg, matname)
+    matdct = Dict(
+        "signals" => eeg.signals,
+        "channel_names" => eeg.labels,
+        "sample_rate" => eeg.sample_rate,
+        "seizure_reviewers_count" => eeg.seizure_reviewers_count,
+        "seizure_start_sec" => eeg.seizure_annotations .|> first,
+        "artifact_start_sec" => eeg.artifact_annotations .|> first,
+        "seizure_stop_sec" => eeg.seizure_annotations .|> last,
+        "artifact_stop_sec" => eeg.artifact_annotations .|> last
+    )
+    matwrite(matname, matdct)
 end
