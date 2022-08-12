@@ -183,11 +183,11 @@ function load_helsinki_artifact_annotations(eeg_num, start_time::Time, excluded_
     return possibly_intersecting_tuples
 end
 
-function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_artifact_grades=(1,))
+function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_artifact_grades=[1])
     edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
     seizures_start_stop, seizure_reviewers_count = load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=min_reviewers_per_seizure)
     ProcessedEEG(edf; 
-        exclude=helsinki_eeg_bad_channels[eeg_num], 
+        exclude_channels=helsinki_eeg_bad_channels[eeg_num], 
         seizure_annotations=seizures_start_stop, 
         artifact_annotations=load_helsinki_artifact_annotations(eeg_num, Time(edf.header.start), excluded_artifact_grades),
         label_replace = (label) -> replace(replace(replace(label, "-Ref" => ""), "-REF"=>""), "EEG " => ""),
@@ -260,7 +260,7 @@ function load_twente_eeg(eeg_name::String; exclude=["ECG", "Stimuli", "Stimulus"
 
     @error "Unclear what artifact grades are excluded from Twente dataset"
     ProcessedEEG(edf; 
-        exclude=[exclude..., twente_eeg_bad_channels[eeg_name]...], 
+        exclude_channels=[exclude..., twente_eeg_bad_channels[eeg_name]...], 
         seizure_annotations=seizure_annotations, 
         artifact_annotations=artifact_annotations, 
         mains_hz=50

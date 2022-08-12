@@ -206,6 +206,8 @@ function plot_μ_and_σ_signals_and_roc!(fig, results_df, signals, signal_times,
         "σ" => (:Δσ, std),
         "μ" => (:Δμ, mean)
     )
+    seizures_with_grace_period = add_grace_to_truth_bounds(eeg.seizure_annotations, get_times(eeg, sample_rate=1/snippets_duration_s), alert_grace_s)
+    non_seizure_hours = (eeg.duration + mapreduce((x) -> x[1] - x[2], +, seizures_with_grace_period, init=0) + mapreduce((x) -> x[1] - x[2], +, eeg.artifact_annotations, init=0)) / (60 * 60)
     duration_hours = eeg.duration / (60 * 60)
     roc_drws = map(enumerate(["μ", "σ"])) do (i, signal_type)
         signal_sym, window_fn = signal_window_fns[signal_type]
@@ -213,7 +215,7 @@ function plot_μ_and_σ_signals_and_roc!(fig, results_df, signals, signal_times,
         @info "done. Now plotting."
         
         if !isnothing(roc_data)
-            roc_plt = data(roc_data) * mapping((:false_positives,:gt_negative) => ((f, gt) -> f / duration_hours) => "FP/Hour", (:true_positives,:gt_positive)=> ((t, gt) -> t / gt) => "TPR") * visual(Lines, color=:blue, linewidth=5)
+            roc_plt = data(roc_data) * mapping((:false_positives,:gt_negative) => ((f, gt) -> f / non_seizure_hours) => "FP/Hour", (:true_positives,:gt_positive)=> ((t, gt) -> t / gt) => "TPR") * visual(Lines, color=:blue, linewidth=5)
             roc_drw = draw!(roc_column[i,1], roc_plt, axis=(title="$(title) ($(signal_type) signal)", limits=((0.,maximum(roc_data.gt_negative)/duration_hours),(0.,1.))))
 
             roc_drw
