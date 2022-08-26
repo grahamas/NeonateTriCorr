@@ -295,6 +295,9 @@ function load_most_recent_jld2(match_str, dir)
         matching_names = filter(Base.Fix1(occursin, match_str), basenames)
         joinpath.(Ref(root), matching_names)
     end
+    if isempty(all_saves)
+        return nothing
+    end
     most_recent_save = sort!(all_saves; by=x -> stat(x).mtime)[end]
     @warn "Loading $most_recent_save..."
     jld_dict = load(most_recent_save)
