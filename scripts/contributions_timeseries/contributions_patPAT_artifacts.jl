@@ -34,8 +34,8 @@ target_match_str = "tricorr_ts_$(fn2str(preproc!))_$(fn2str(postproc!))_$(obj2st
 session_name = "$(target_match_str)$(unique_id)"
 @show session_name
 
-if preproc! == zscore!
-    preproc! = (o,i) -> zscore!(o,i,mean(i),std(i))
+if preproc! == TripleCorrelations.zscore!
+    preproc! = (o,i) -> TripleCorrelations.zscore!(o,i,mean(i),std(i))
 end
 maybe_jld_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
 contributions = if isnothing(maybe_file) || force_recalculate_contributions
