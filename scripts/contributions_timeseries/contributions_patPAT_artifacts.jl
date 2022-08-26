@@ -38,7 +38,7 @@ if preproc! == TripleCorrelations.zscore!
     preproc! = (o,i) -> TripleCorrelations.zscore!(o,i,mean(i),std(i))
 end
 maybe_jld_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
-contributions = if isnothing(maybe_file) || force_recalculate_contributions
+contributions = if isnothing(maybe_jld_dict) || force_recalculate_contributions
     calc_class_contributions(eeg, Periodic(), 
             preproc!, postproc!,
             assumption, conditioned_on

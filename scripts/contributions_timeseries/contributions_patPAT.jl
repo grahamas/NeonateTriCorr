@@ -19,7 +19,7 @@ moving_average(vs, n) = [mean(@view vs[(i-n+1):i]) for i in n:length(vs)]
 PAT = 75
 
 contributions_PAT = let eeg = load_helsinki_eeg(PAT),# eeg = snip(eeg, 600, 975),
-    snippets_duration=1, preproc! = zscore!, postproc! = zscore!,
+    snippets_duration=1, preproc! = TripleCorrelations.zscore!, postproc! = TripleCorrelations.zscore!,
     assumption = IndStdNormal(), conditioned_on = None(),
     lag_extents = (8,25), plot_traces=true;
 
@@ -32,11 +32,11 @@ target_match_str = "tricorr_ts_$(fn2str(preproc!))_$(fn2str(postproc!))_$(obj2st
 session_name = "$(target_match_str)$(unique_id)"
 @show session_name
 
-if preproc! == zscore!
-    preproc! = (o,i) -> zscore!(o,i,mean(i),std(i))
+if preproc! == TripleCorrelations.zscore!
+    preproc! = (o,i) -> TripleCorrelations.zscore!(o,i,mean(i),std(i))
 end
 maybe_jld_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
-contributions = if isnothing(maybe_file) || force_recalculate_contributions
+contributions = if isnothing(maybe_jld_dict) || force_recalculate_contributions
     calc_class_contributions(eeg, Periodic(), 
             preproc!, postproc!,
             assumption, conditioned_on
