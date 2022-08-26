@@ -17,7 +17,7 @@ include(scriptsdir("include_src.jl"))
 contributions_PAT = let excluded_artifact_grades = Int[],
     eeg = load_helsinki_eeg(PAT; 
         excluded_artifact_grades=excluded_artifact_grades
-    ), eeg = snip(eeg, 600, 975),
+    ), #eeg = snip(eeg, 600, 975),
     snippets_duration=1, 
     preproc! = TripleCorrelations.zscore!, postproc! = TripleCorrelations.zscore!,
     assumption = IndStdNormal(), 
