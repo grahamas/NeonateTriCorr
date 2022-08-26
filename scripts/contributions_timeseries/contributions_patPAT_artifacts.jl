@@ -11,16 +11,19 @@ using EDF, DSP, Statistics, StatsBase, CairoMakie
 ext = "png"
 using Random, JLD2
 using HypothesisTests, CSV
+
 include(scriptsdir("include_src.jl"))
 
-contributions_PAT = let 
-    excluded_artifact_grades = Int[],
+contributions_PAT = let excluded_artifact_grades = Int[],
     eeg = load_helsinki_eeg(PAT; 
         excluded_artifact_grades=excluded_artifact_grades
-    ),# eeg = snip(eeg, 600, 975),
-    snippets_duration=1, preproc! = zscore!, postproc! = zscore!,
-    assumption = IndStdNormal(), conditioned_on = None(),
-    lag_extents = (8,25), plot_traces=true;
+    ), eeg = snip(eeg, 600, 975),
+    snippets_duration=1, 
+    preproc! = TripleCorrelations.zscore!, postproc! = TripleCorrelations.zscore!,
+    assumption = IndStdNormal(), 
+    conditioned_on = None(),
+    lag_extents = (9,25), 
+    plot_traces = true;
 
 unique_id = if @isdefined(parent_session_id)
     parent_session_id
