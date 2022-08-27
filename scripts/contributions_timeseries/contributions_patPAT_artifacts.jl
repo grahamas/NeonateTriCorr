@@ -22,7 +22,7 @@ contributions_PAT = let excluded_artifact_grades = Int[],
     preproc! = TripleCorrelations.zscore!, postproc! = TripleCorrelations.zscore!,
     assumption = IndStdNormal(), 
     conditioned_on = None(),
-    lag_extents = (9,25), 
+    lag_extents = (8,25), 
     plot_traces = true;
 
 unique_id = if @isdefined(parent_session_id)
