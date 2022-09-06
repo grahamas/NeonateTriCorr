@@ -11,3 +11,7 @@ include(srcdir("contribution_comparisons.jl"))
 include(srcdir("rolling_estimates.jl"))
 include(srcdir("detect_seizures.jl"))
 include(srcdir("aeeg.jl"))
+
+
+include(scriptsdir("meats/calculate_patient_tricorr.jl"))
+include(scriptsdir("meats/epoch_differences.jl"))
