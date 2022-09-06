@@ -36,7 +36,7 @@ function calculate_patient_tricorr(patient_num;
     maybe_jld_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
     contributions = if isnothing(maybe_jld_dict) || force_recalculate_contributions
         @info "Calculating triple correlation..."
-        calc_class_contributions(eeg, Periodic(), 
+        contributions = calc_class_contributions(eeg, Periodic(), 
                 preproc!, postproc!,
                 assumption, conditioned_on
                 ;
@@ -56,6 +56,7 @@ function calculate_patient_tricorr(patient_num;
                 "postproc_str" => fn2str(postproc!)
             )
         )
+        return contributions
     else
         @info "Using cached triple correlation!"
         contributions = pop!(maybe_jld_dict, "contributions")
