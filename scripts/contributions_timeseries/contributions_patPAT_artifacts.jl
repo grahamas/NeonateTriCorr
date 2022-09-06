@@ -14,6 +14,16 @@ using HypothesisTests, CSV
 
 include(scriptsdir("include_src.jl"))
 
-contributions_PAT = calculate_patient_tricorr(PAT; excluded_artifact_grades=Int[])
+params = Dict(
+    :excluded_artifact_grades=>Int[],
+    :snippets_duration_s => 1,
+    :preproc! => TripleCorrelations.zscore!, 
+    :postproc! => TripleCorrelations.zscore!,
+    :assumption => IndStdNormal(), :conditioned_on => None(),
+    :lag_extents => (8,25), :patient_num => ""
+)
+contributions_PAT = calculate_patient_tricorr(PAT; 
+    params...
+)
 
 force_recalculate_contributions = false
