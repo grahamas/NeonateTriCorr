@@ -15,7 +15,7 @@ include(scriptsdir("include_src.jl"))
 snippets_duration_s = 15
 rolling_window_s = 60
 rolling_window = ceil(Int, rolling_window_s / snippets_duration_s)
-min_reviewers_per_seizure=3
+min_reviewers_per_seizure=1
 min_snippets_for_comparison = 8
 
 save_dir = plotsdir("aeeg_$(snippets_duration_s)_rolling$(rolling_window_s)_$(Dates.now())")
@@ -98,9 +98,12 @@ if isempty(seizure_bounds)
     return []
 end
 
-control_snippets = calc_control_snippet_starts_incl_artifacts(seizure_bounds, eeg.duration, signal_times, min_dist_to_seizure)
+control_bounds = calc_control_bounds(eeg, snippets_duration_s, min_dist_to_seizure)
+control_snippets = mapreduce((x,y) -> x .|| y, control_bounds) do (on, off)
+    on .<= (signal_times .+ 1) .< off
+end
 seizure_snippets = mapreduce((x,y) -> x .|| y, seizure_bounds) do (on, off)
-    on .<= (signal_times .+ 1)< off
+    on .<= (signal_times .+ 1)  .< off
 end
 
 

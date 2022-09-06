@@ -19,7 +19,7 @@ moving_average(vs, n) = [mean(@view vs[(i-n+1):i]) for i in n:length(vs)]
 PAT = 75
 
 contributions_PAT = let eeg = load_helsinki_eeg(PAT),# eeg = snip(eeg, 600, 975),
-    snippets_duration=1, preproc! = TripleCorrelations.zscore!, postproc! = TripleCorrelations.zscore!,
+    snippets_duration_s=1, preproc! = TripleCorrelations.zscore!, postproc! = TripleCorrelations.zscore!,
     assumption = IndStdNormal(), conditioned_on = None(),
     lag_extents = (8,25), plot_traces=true;
 
@@ -28,7 +28,7 @@ unique_id = if @isdefined(parent_session_id)
 else
     Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")
 end
-target_match_str = "tricorr_ts_$(fn2str(preproc!))_$(fn2str(postproc!))_$(obj2str(assumption))_$(obj2str(conditioned_on))_snippets$(snippets_duration)_lagextents$(lag_extents[1])x$(lag_extents[2])_helsinkiEEG$(PAT)_"
+target_match_str = "tricorr_ts_$(fn2str(preproc!))_$(fn2str(postproc!))_$(obj2str(assumption))_$(obj2str(conditioned_on))_snippets$(snippets_duration_s)_lagextents$(lag_extents[1])x$(lag_extents[2])_helsinkiEEG$(PAT)_"
 session_name = "$(target_match_str)$(unique_id)"
 @show session_name
 
@@ -43,7 +43,7 @@ contributions = if isnothing(maybe_jld_dict) || force_recalculate_contributions
             ;
             lag_extents = lag_extents,
             n_motif_classes = 14,
-            snippets_duration=snippets_duration
+            snippets_duration_s=snippets_duration_s
         )
 else
     maybe_jld_dict["contributions"]
@@ -60,7 +60,7 @@ if plot_traces
     eeg_fig = draw_eeg_traces(eeg; title = "EEG (Patient $PAT)", resolution=(1000,1600))
     save(joinpath(plots_subdir, "pat$(PAT)_eeg_traces.png"), eeg_fig)
 
-    times = get_times(eeg, sample_rate=snippets_duration)
+    times = get_times(eeg, sample_rate=snippets_duration_s)
     conts_fig = plot_contributions(eeg, times, contributions; title="Motif Contributions (Patient $PAT)", resolution=(1000,1600))
     save(joinpath(plots_subdir, "pat$(PAT)_contributions.png"), conts_fig)
 end

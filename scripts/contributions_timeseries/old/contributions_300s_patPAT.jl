@@ -24,7 +24,7 @@ let eeg = load_helsinki_eeg(PAT), eeg = snip(eeg, START_S, START_S+30);
 contributions = calc_class_contributions(eeg, Periodic(), AN_01norm;
         λ_max = (8,25),
         n_motif_classes = 14,
-        snippets_duration=1
+        snippets_duration_s=1
     )
 
 save(datadir("exp_pro", "timeseries_300s_AN_pat$(PAT)_start_$(START_S)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")).jld2"), Dict("contributions" => contributions, "START_S"=>START_S) )

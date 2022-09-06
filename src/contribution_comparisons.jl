@@ -1,23 +1,52 @@
-function calc_seizure_snippet_starts(eeg::AbstractProcessedEEG, snippets_duration)
-    calc_seizure_snippet_starts(eeg.seizure_annotations, snippets_duration)
+function calc_seizure_snippet_starts(eeg::AbstractProcessedEEG, snippets_duration_s)
+    calc_seizure_snippet_starts(eeg.seizure_annotations, snippets_duration_s)
 end
-function calc_seizure_snippet_starts(seizure_annotations, snippets_duration)
-    return vcat([collect(on:snippets_duration:off) for (on, off) ∈ seizure_annotations]...)
+function calc_seizure_snippet_starts(seizure_annotations, snippets_duration_s)
+    return vcat([collect(on:snippets_duration_s:off) for (on, off) ∈ seizure_annotations]...)
 end
 
-function calc_control_snippet_starts(eeg::AbstractProcessedEEG, snippets_duration, min_dist_to_seizure)
+function calc_control_snippet_starts(eeg::AbstractProcessedEEG, snippets_duration_s, min_dist_to_seizure)
     # should assert that seizure and artifacts do not overlap
-    seizure_onsets = first.(eeg.seizure_annotations); artifact_onsets = first.(eeg.artifact_annotations)
-    seizure_offsets = last.(eeg.seizure_annotations); artifact_offsets = last.(eeg.artifact_annotations)
-    control_onsets = [0, seizure_offsets..., artifact_offsets...]
-    sort!(control_onsets)
-    control_offsets = [seizure_onsets..., artifact_onsets..., eeg.duration]
-    sort!(control_offsets)
-    control_bounds = zip(control_onsets, control_offsets)
-    return vcat([(on+min_dist_to_seizure):snippets_duration:(off-min_dist_to_seizure) for (on, off) ∈ control_bounds if (off-min_dist_to_seizure)-(on+min_dist_to_seizure)>snippets_duration]...)
+    control_bounds = calc_control_bounds(eeg, snippets_duration_s, min_dist_to_seizure)
+    return vcat([on:snippets_duration_s:off for (on, off) ∈ control_bounds]...)
 end
 
-function calc_control_snippet_starts_incl_artifacts(seizure_annotations, recording_duration, signal_times, min_dist_to_seizure)
+function merge_bounds(bounds1::AbstractVector{Tup}, bounds2::AbstractVector{Tup}) where {T,Tup<:Tuple{T,T}}
+    if isempty(bounds1) && isempty(bounds2)
+        return Tup[]
+    elseif isempty(bounds1)
+        return bounds2
+    elseif isempty(bounds2)
+        return bounds1
+    end
+    bounds = sort([bounds1..., bounds2...])
+    new_bounds = Tup[]
+
+    current_start, current_stop = first(bounds)
+    for (start, stop) in bounds[2:end]
+        if start <= current_stop
+            current_stop = max(stop, current_stop)
+        else
+            push!(new_bounds, (current_start, current_stop))
+            current_start = start; current_stop = stop
+        end
+    end
+    push!(new_bounds, (current_start, current_stop))
+
+    return new_bounds
+end
+
+
+function calc_control_bounds(eeg::AbstractProcessedEEG, snippets_duration_s, min_dist_to_seizure)
+    non_control_bounds = merge_bounds(eeg.seizure_annotations, eeg.artifact_annotations)
+    control_onsets = [0, first.(non_control_bounds)...]
+    control_offsets = [last.(non_control_bounds)..., eeg.duration]
+    control_bounds = zip(control_onsets, control_offsets)
+    @show control_bounds
+    return [(on+min_dist_to_seizure, off-min_dist_to_seizure) for (on, off) ∈ control_bounds if (off-min_dist_to_seizure)-(on+min_dist_to_seizure) > snippets_duration_s]
+end
+
+function calc_control_snippets_incl_artifacts(seizure_annotations, recording_duration, signal_times, min_dist_to_seizure)
     # should assert that seizure and artifacts do not overlap
     seizure_onsets = first.(seizure_annotations)
     seizure_offsets = last.(seizure_annotations)
@@ -26,15 +55,15 @@ function calc_control_snippet_starts_incl_artifacts(seizure_annotations, recordi
     control_offsets = [seizure_onsets..., recording_duration]
     sort!(control_offsets)
     control_bounds = zip(control_onsets, control_offsets)
-    return reduce((x,y) -> x .|| y, [(on+min_dist_to_seizure) .<= (signal_times .+ 1)< (off-min_dist_to_seizure) for (on, off) ∈ control_bounds])
+    return reduce((x,y) -> x .|| y, [(on+min_dist_to_seizure) .<= (signal_times .+ 1) .< (off-min_dist_to_seizure) for (on, off) ∈ control_bounds])
 end
 
 function control_vs_seizure_class_contributions(eeg::AbstractProcessedEEG; 
     boundary,
     contributions_desc,
-    n_snippets, snippets_duration=1, min_dist_to_seizure=60, kwargs...)
-    seizure_snippet_starts = calc_seizure_snippet_starts(eeg, snippets_duration)
-    control_snippet_starts = calc_control_snippet_starts(eeg, snippets_duration, min_dist_to_seizure)
+    n_snippets, snippets_duration_s=1, min_dist_to_seizure=60, kwargs...)
+    seizure_snippet_starts = calc_seizure_snippet_starts(eeg, snippets_duration_s)
+    control_snippet_starts = calc_control_snippet_starts(eeg, snippets_duration_s, min_dist_to_seizure)
 
     if (length(control_snippet_starts) <= n_snippets)
         @warn "Patient lacks sufficiently many separated snippets."
@@ -44,8 +73,8 @@ function control_vs_seizure_class_contributions(eeg::AbstractProcessedEEG;
     seizure_snippet_starts = sort(sample(seizure_snippet_starts, min(n_snippets, length(seizure_snippet_starts)), replace=false))
     control_snippet_starts = sort(sample(control_snippet_starts, n_snippets, replace=false))
 
-    seizure_snippets_class_contribution = calc_class_contributions(eeg, boundary, contributions_desc; snippets_start_sec = seizure_snippet_starts, snippets_duration = snippets_duration, kwargs...)
-    control_snippets_class_contribution = calc_class_contributions(eeg, boundary, contributions_desc; snippets_start_sec = control_snippet_starts, snippets_duration = snippets_duration, kwargs...)
+    seizure_snippets_class_contribution = calc_class_contributions(eeg, boundary, contributions_desc; snippets_start_sec = seizure_snippet_starts, snippets_duration_s = snippets_duration_s, kwargs...)
+    control_snippets_class_contribution = calc_class_contributions(eeg, boundary, contributions_desc; snippets_start_sec = control_snippet_starts, snippets_duration_s = snippets_duration_s, kwargs...)
 
     return (seizure=seizure_snippets_class_contribution, control=control_snippets_class_contribution)
 end

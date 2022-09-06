@@ -25,10 +25,10 @@ eeg = load_helsinki_eeg(PAT)
 min_snippets_for_comparison = 100
 
 min_dist_to_seizure = 30
-snippets_duration = 1
+snippets_duration_s = 1
 
 seizure_bounds, consensus = load_helsinki_seizure_annotations(PAT; min_reviewers_per_seizure=min_reviewers_per_seizure)
-raw_signal = get_signal(eeg)
+raw_signal = get_signal_sans_artifacts(eeg)
 channels = 1:size(raw_signal,1)
 
 # Get signal in 1 Hz
@@ -83,9 +83,12 @@ if isempty(seizure_bounds)
     return []
 end
 
-control_snippets = calc_control_snippet_starts_incl_artifacts(seizure_bounds, eeg.duration, signal_times, min_dist_to_seizure)
+control_bounds = calc_control_bounds(eeg, snippets_duration_s, min_dist_to_seizure)
+control_snippets = mapreduce((x,y) -> x .|| y, control_bounds) do (on, off)
+    on .<= (signal_times .+ 1) .< off
+end
 seizure_snippets = mapreduce((x,y) -> x .|| y, seizure_bounds) do (on, off)
-    on .<= (signal_times .+ 1)< off
+    on .<= (signal_times .+ 1) .< off
 end
 
 

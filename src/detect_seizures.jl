@@ -1,28 +1,28 @@
 
-function evaluate_detection_posseizure_negepoch(truth_bounds::Vector{<:Tuple}, detections::Vector)
-    # One positive per seizure, one negative per non-seizure epoch
-    true_positives = 0
-    false_positives = 0
-    true_negatives = 0
-    false_negatives = 0
-    valid_truth_bounds = [(on,off) for (on,off) ∈ truth_bounds if !all(ismissing.(detections[on:off]))]
-    for (on, off) ∈ valid_truth_bounds # should combine adjacent seizures
-        detected_seizure = any(skipmissing(detections[on:off]))
-        true_positives += detected_seizure
-        false_negatives += !detected_seizure
-        detections[on:off] .= missing # should exclude adjacent bins
-    end
-    true_negatives = count(skipmissing(detections) .== false)
-    false_positives = count(skipmissing(detections) .== true)
-    return (
-        gt_positive = length(valid_truth_bounds),
-        gt_negative = count(.!ismissing.(detections)), # should combine seconds
-        true_positives = true_positives,
-        false_positives = false_positives,
-        true_negatives = true_negatives,
-        false_negatives = false_negatives
-    )
-end
+# function evaluate_detection_posseizure_negepoch(truth_bounds::Vector{<:Tuple}, detections::Vector)
+#     # One positive per seizure, one negative per non-seizure epoch
+#     true_positives = 0
+#     false_positives = 0
+#     true_negatives = 0
+#     false_negatives = 0
+#     valid_truth_bounds = [(on,off) for (on,off) ∈ truth_bounds if !all(ismissing.(detections[on:off]))]
+#     for (on, off) ∈ valid_truth_bounds # should combine adjacent seizures
+#         detected_seizure = any(skipmissing(detections[on:off]))
+#         true_positives += detected_seizure
+#         false_negatives += !detected_seizure
+#         detections[on:off] .= missing # should exclude adjacent bins
+#     end
+#     true_negatives = count(skipmissing(detections) .== false)
+#     false_positives = count(skipmissing(detections) .== true)
+#     return (
+#         gt_positive = length(valid_truth_bounds),
+#         gt_negative = count(.!ismissing.(detections)), # should combine seconds
+#         true_positives = true_positives,
+#         false_positives = false_positives,
+#         true_negatives = true_negatives,
+#         false_negatives = false_negatives
+#     )
+# end
 
 function add_grace_to_truth_bounds(truth_bounds, time_idxs, grace_s)
     if isempty(truth_bounds)
@@ -66,12 +66,18 @@ function evaluate_detection_posseizure_negalerts(truth_bounds::Vector{<:Tuple}, 
     end
     for i ∈ eachindex(detections)
         detect = detections[i]
-        if ismissing(detect)
+        if ismissing(detect) || (detect == 2) || (detect < 0)
             continue
         elseif detect == 0
+            # new grace period; correct negative detection
             true_negatives += 1
             detections[min(i+1,len):min(i+alert_grace,len)] .+= 2
-        elseif (detect == 1) || (detect == 3)
+        elseif (detect == 1)
+            # new grace period; incorrect positive detection
+            false_positives += 1
+            detections[min(i+1,len):min(i+alert_grace,len)] .-= 10
+        elseif (detect == 3)
+            # current grace period previously negative, now positive
             false_positives += 1
             true_negatives -= 1
             detections[min(i+1,len):min(i+alert_grace,len)] .-= 10
@@ -177,7 +183,7 @@ function plot_μ_and_σ_signals_and_roc(args...; resolution=(1300, 1000), kwargs
 end
 
 
-function plot_μ_and_σ_signals_and_roc!(fig, results_df, signals, signal_times, truth_bounds; eeg, rolling_window_s, example_θ, n_signals_used=5, snippets_duration_s, alert_grace_s, title)
+function plot_μ_and_σ_signals_and_roc!(fig, results_df, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, rolling_window_s, example_θ, n_signals_used=5, snippets_duration_s, alert_grace_s, title)
 
     rolling_window = rolling_window_s ÷ snippets_duration_s
 
@@ -191,11 +197,11 @@ function plot_μ_and_σ_signals_and_roc!(fig, results_df, signals, signal_times,
     fig[1,1:2] = ax_mean = Axis(fig; ylabel = "mean μ (five most significant channels)")
     fig[2,1:2] = ax_std = Axis(fig; ylabel = "mean σ (five most significant channels)")
     fig[3,1:2] = ax_rev = Axis(fig; ylabel = "# reviewers", xlabel = "time")
-    TriCorrApplications.plot_reviewer_consensus!(ax_rev, eeg)
-    TriCorrApplications.plot_contribution!(ax_mean, eeg, signal_times, detections_mean)
-    TriCorrApplications.plot_contribution!(ax_std, eeg, signal_times, detections_std)
-    hlines!(ax_mean, [example_θ], color=:red, linestyle=:dash)
-    hlines!(ax_std, [example_θ], color=:red, linestyle=:dash)
+    TriCorrApplications.plot_reviewer_consensus!(ax_rev, plot_eeg)
+    TriCorrApplications.plot_contribution!(ax_mean, plot_eeg, signal_times, detections_mean)
+    TriCorrApplications.plot_contribution!(ax_std, plot_eeg, signal_times, detections_std)
+    # hlines!(ax_mean, [example_θ], color=:red, linestyle=:dash)
+    # hlines!(ax_std, [example_θ], color=:red, linestyle=:dash)
 
     roc_column = fig[:,end+1]
     # save(joinpath(save_dir, "signals_patient$(PAT)_reviewers$(min_reviewers_per_seizure).png"), fig)
@@ -206,19 +212,23 @@ function plot_μ_and_σ_signals_and_roc!(fig, results_df, signals, signal_times,
         "σ" => (:Δσ, std),
         "μ" => (:Δμ, mean)
     )
-    seizures_with_grace_period = add_grace_to_truth_bounds(eeg.seizure_annotations, get_times(eeg, sample_rate=1/snippets_duration_s), alert_grace_s)
-    non_seizure_hours = (eeg.duration + mapreduce((x) -> x[1] - x[2], +, seizures_with_grace_period, init=0) + mapreduce((x) -> x[1] - x[2], +, eeg.artifact_annotations, init=0)) / (60 * 60)
-    duration_hours = eeg.duration / (60 * 60)
+    seizures_with_grace_period = add_grace_to_truth_bounds(analysis_eeg.seizure_annotations, get_times(analysis_eeg, sample_rate=1/snippets_duration_s), alert_grace_s)
+    seizure_and_artifact_bounds = merge_bounds(seizures_with_grace_period, analysis_eeg.artifact_annotations)
+    non_seizure_hours = (analysis_eeg.duration + mapreduce((x) -> x[1] - x[2], +, seizure_and_artifact_bounds, init=0)) / (60 * 60)
+    duration_hours = analysis_eeg.duration / (60 * 60)
     roc_drws = map(enumerate(["μ", "σ"])) do (i, signal_type)
         signal_sym, window_fn = signal_window_fns[signal_type]
         roc_data = calculate_ROC(results_df, signals, signal_times, truth_bounds; signal_sym=signal_sym, window_fn=window_fn, rolling_window_s=rolling_window_s, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, n_signals_used=n_signals_used, n_θs=100)
         @info "done. Now plotting."
         
-        if !isnothing(roc_data)
+        if !isnothing(roc_data) && any(roc_data.gt_negative .!= 0) && any(roc_data.gt_positive .!= 0)
             roc_plt = data(roc_data) * mapping((:false_positives,:gt_negative) => ((f, gt) -> f / non_seizure_hours) => "FP/Hour", (:true_positives,:gt_positive)=> ((t, gt) -> t / gt) => "TPR") * visual(Lines, color=:blue, linewidth=5)
-            roc_drw = draw!(roc_column[i,1], roc_plt, axis=(title="$(title) ($(signal_type) signal)", limits=((0.,maximum(roc_data.gt_negative)/duration_hours),(0.,1.))))
+            roc_drw = draw!(roc_column[i,1], roc_plt, axis=(title="$(title) ($(signal_type) signal)", limits=((0.,maximum(roc_data.gt_negative)/non_seizure_hours),(0.,1.))))
+            @show "FP/Hr max = $(maximum(roc_data.gt_negative))/$(non_seizure_hours) = $(maximum(roc_data.gt_negative)/non_seizure_hours)"
 
             roc_drw
+        else
+            @warn "Cannot plot valid ROC curve: $(title)"
         end
     end
     return fig
@@ -231,7 +241,7 @@ function plot_μ_comparison(args...; resolution=(1300, 1000), kwargs...)
 end
 
 
-function plot_μ_comparison!(fig, results_dfs, (aeeg_signal_times, aeeg_signals), (tricorr_signal_times, tricorr_signals), truth_bounds; eeg, rolling_window_s, example_θ, n_signals_used=5, aeeg_snippets_duration_s, tricorr_snippets_duration_s, alert_grace_s, title)
+function plot_μ_comparison!(fig, results_dfs, (aeeg_signal_times, aeeg_signals), (tricorr_signal_times, tricorr_signals), truth_bounds; eeg, rolling_window_s, n_signals_used=5, aeeg_snippets_duration_s, tricorr_snippets_duration_s, alert_grace_s, title)
 
     aeeg_rolling_window = rolling_window_s ÷ aeeg_snippets_duration_s
     tricorr_rolling_window = rolling_window_s ÷ tricorr_snippets_duration_s
@@ -248,8 +258,6 @@ function plot_μ_comparison!(fig, results_dfs, (aeeg_signal_times, aeeg_signals)
     TriCorrApplications.plot_reviewer_consensus!(ax_rev, eeg)
     TriCorrApplications.plot_contribution!(ax_mean_aeeg, eeg, aeeg_signal_times, tricorr_detections_mean)
     TriCorrApplications.plot_contribution!(ax_mean_tricorr, eeg, tricorr_signal_times, aeeg_detections_mean)
-    hlines!(ax_mean_aeeg, [example_θ], color=:red, linestyle=:dash)
-    hlines!(ax_mean_tricorr, [example_θ], color=:red, linestyle=:dash)
 
     roc_column = fig[:,end+1]
     # save(joinpath(save_dir, "signals_patient$(PAT)_reviewers$(min_reviewers_per_seizure).png"), fig)

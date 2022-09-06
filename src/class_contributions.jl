@@ -83,7 +83,7 @@ snippet_contributions_fns = Dict(
 #         n_motif_classes, 
 #         n_seconds = floor(Int, eeg.duration),
 #         snippets_start_sec=0:(n_seconds-1),
-#         snippets_duration=1
+#         snippets_duration_s=1
 #     )
 #     eeg_motif_class_contributions = NamedDimsArray{(:motif_class, :time)}(zeros(Float64, n_motif_classes, length(snippets_start_sec)))
 #     # sig_lock = ReentrantLock()
@@ -91,7 +91,7 @@ snippet_contributions_fns = Dict(
 #     #p = ProgressMeter.Progress(length(snippets_start_sec))
 #     @threads for (i_sec, snippet_start_sec) ∈ enumerate(snippets_start_sec)
 #         i_start = round(Int, (snippet_start_sec*eeg.sample_rate)+1)
-#         i_end = round(Int, (snippet_start_sec+snippets_duration)*eeg.sample_rate)
+#         i_end = round(Int, (snippet_start_sec+snippets_duration_s)*eeg.sample_rate)
 #         snippet = eeg.signals[:,i_start:i_end]
 #         contributions = contributions_fn(snippet, boundary, λ_max)
 #         eeg_motif_class_contributions[:,i_sec] .= contributions
@@ -110,17 +110,17 @@ function calc_class_contributions(eeg::AbstractProcessedEEG,
         condition::TripleCorrelations.AbstractConditional; 
         lag_extents,
         n_motif_classes, 
-        snippets_duration=1
+        snippets_duration_s=1
     )
     n_seconds = floor(Int, eeg.duration)
-    snippets_start_sec=0:snippets_duration:(n_seconds-1)
+    snippets_start_sec=0:snippets_duration_s:(n_seconds-1)
     eeg_motif_class_contributions = NamedDimsArray{(:motif_class, :time)}(zeros(Union{Float64,Missing}, n_motif_classes, length(snippets_start_sec)))
 
-    snippet_generator = (get_signal_snippet(eeg, start, start+snippets_duration) for start in snippets_start_sec)
+    snippet_generator = (get_signal_snippet(eeg, start, start+snippets_duration_s) for start in snippets_start_sec)
     precalced_postproc! = precalculate(postproc!, assumption, condition, snippet_generator, boundary, lag_extents)
 
     @threads for i_sec ∈ 1:length(snippets_start_sec)
-        snippet = get_signal_snippet(eeg, snippets_start_sec[i_sec], snippets_start_sec[i_sec]+snippets_duration)
+        snippet = get_signal_snippet(eeg, snippets_start_sec[i_sec], snippets_start_sec[i_sec]+snippets_duration_s)
         if any(ismissing.(snippet))
             eeg_motif_class_contributions[:,i_sec] .= missing
         else

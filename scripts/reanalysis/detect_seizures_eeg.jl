@@ -28,7 +28,7 @@ drws = mapreduce(vcat, [1:15..., 19,31,44,47,50,62]) do patient_num
 
     @info "Loading EEG $(patient_num)..."
     eeg = load_helsinki_eeg(patient_num; min_reviewers_per_seizure = min_reviewers_per_seizure)
-    raw_signals = get_signal(eeg)
+    raw_signals = get_signal_sans_artifacts(eeg)
     channels = 1:size(raw_signals,1)
 
     seizure_bounds, consensus = load_helsinki_seizure_annotations(patient_num; min_reviewers_per_seizure=min_reviewers_per_seizure)

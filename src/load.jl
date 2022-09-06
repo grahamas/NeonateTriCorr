@@ -170,7 +170,7 @@ function collapse_tuples!(tups::Array{T}) where T
     filter!(!=(dummy_val), tups)
 end
 
-function load_helsinki_artifact_annotations(eeg_num, start_time::Time, excluded_grades=(1,))
+function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start_time::Time=Time(EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf")).header.start))
     df = CSV.read(scriptsdir("helsinki_artifacts.csv"), DataFrame)
     subset!(df, "Patient #" => ByRow(==(eeg_num)))
     output_df = DataFrame(
@@ -189,7 +189,7 @@ function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_a
     ProcessedEEG(edf; 
         exclude_channels=helsinki_eeg_bad_channels[eeg_num], 
         seizure_annotations=seizures_start_stop, 
-        artifact_annotations=load_helsinki_artifact_annotations(eeg_num, Time(edf.header.start), excluded_artifact_grades),
+        artifact_annotations=load_helsinki_artifact_annotations(eeg_num, excluded_artifact_grades; start_time=Time(edf.header.start)),
         label_replace = (label) -> replace(replace(replace(label, "-Ref" => ""), "-REF"=>""), "EEG " => ""),
         mains_hz=50,
         seizure_reviewers_count = seizure_reviewers_count,

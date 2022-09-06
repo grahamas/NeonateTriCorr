@@ -38,7 +38,17 @@ function set_artifacts_missing(signal::AbstractMatrix, eeg::ProcessedEEGv8{T}; s
     arr[:, artifact_times] .= missing
     return arr
 end
+function set_artifacts_missing(signal::AbstractVector, eeg::ProcessedEEGv8{T}; sample_rate=eeg.sample_rate) where T
+    times = get_times(eeg, sample_rate=sample_rate)
+    artifact_times = in_artifact.(times, Ref(eeg))
+    arr = Array{Union{T,Missing}}(signal)
+    arr[artifact_times] .= missing
+    return arr
+end
 function TriCorrApplications.get_signal(eeg::ProcessedEEGv8)
+    eeg.signals
+end
+function get_signal_sans_artifacts(eeg::ProcessedEEGv8)
     sig = set_artifacts_missing(eeg.signals, eeg)
     sig
 end

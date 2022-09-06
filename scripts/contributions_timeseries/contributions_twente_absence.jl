@@ -16,13 +16,13 @@ rms(xs) = sqrt(mean(xs .^ 2))
 moving_average(vs, n) = [mean(@view vs[(i-n+1):i]) for i in n:length(vs)]
 
 let eeg_name = EEG_NAME, eeg = load_twente_eeg(eeg_name), window=30,
-    snippets_duration=1, 
+    snippets_duration_s=1, 
     λ_max = (8,25);
 @info "Calculating contributions..."
 contributions = calc_class_contributions(eeg, Periodic(), AN_01norm;
         λ_max = λ_max,
         n_motif_classes = 14,
-        snippets_duration=snippets_duration
+        snippets_duration_s=snippets_duration_s
     )
 @info "Saving data..."
 save(datadir("exp_pro", "timeseries_AN_$(λ_max[1])_$(λ_max[2])_twente_$(eeg_name)_$(Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")).jld2"), Dict("contributions" => contributions))
@@ -33,7 +33,7 @@ mkpath(plots_subdir)
 eeg_fig = draw_eeg_traces(eeg; title = "EEG ($(eeg_name))", resolution=(1000,1600))
 save(joinpath(plots_subdir, "$(eeg_name)_eeg_traces.png"), eeg_fig)
 
-times = get_times(eeg, sample_rate=snippets_duration)
+times = get_times(eeg, sample_rate=snippets_duration_s)
 conts_fig = plot_contributions(eeg, times, contributions,; title="Motif Contributions ($(eeg_name))", resolution=(1000,1600))
 save(joinpath(plots_subdir, "$(eeg_name)_contributions.png"), conts_fig)
 
