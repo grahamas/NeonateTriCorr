@@ -1,6 +1,6 @@
 function calculate_patient_tricorr(patient_num;
         excluded_artifact_grades=[1],
-        eeg = load_helsinki_eeg(patient_num)
+        eeg = load_helsinki_eeg(patient_num; excluded_artifact_grades=excluded_artifact_grades),
         snippets_duration_s, 
         preproc!, postproc!,
         assumption, conditioned_on,
@@ -22,7 +22,7 @@ function calculate_patient_tricorr(patient_num;
     end
     target_match_str = make_filename_stem("tricorr"; 
         excluded_artifact_grades=excluded_artifact_grades,
-        preproc!=preproc!, postproc!=postproc!,
+        preproc! = preproc!, postproc! = postproc!,
         assumption=assumption, conditioned_on=conditioned_on,
         lag_extents=lag_extents, patient_num=patient_num
     )
