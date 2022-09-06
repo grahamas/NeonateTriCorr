@@ -24,7 +24,8 @@ function calculate_patient_tricorr(patient_num;
         excluded_artifact_grades=excluded_artifact_grades,
         preproc! = preproc!, postproc! = postproc!,
         assumption=assumption, conditioned_on=conditioned_on,
-        lag_extents=lag_extents, patient_num=patient_num
+        lag_extents=lag_extents, patient_num=patient_num,
+        snippets_duration_s=snippets_duration_s
     )
     session_name = "$(target_match_str)$(unique_id)"
     @info "Running: $session_name"

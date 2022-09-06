@@ -20,7 +20,7 @@ params = Dict(
     :preproc! => TripleCorrelations.zscore!, 
     :postproc! => TripleCorrelations.zscore!,
     :assumption => IndStdNormal(), :conditioned_on => None(),
-    :lag_extents => (8,25), :patient_num => ""
+    :lag_extents => (8,25)
 )
 contributions_PAT = calculate_patient_tricorr(PAT; 
     params...
