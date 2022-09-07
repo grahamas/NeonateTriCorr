@@ -15,12 +15,7 @@ function calculate_patient_tricorr(patient_num;
     else
         Dates.format(Dates.now(), "yyyy_mm_dd-HHMMSS")
     end
-    basename = if isempty(excluded_artifact_grades) 
-        "tricorr_artifacts"
-    else
-        "tricorr"
-    end
-    target_match_str = make_filename_stem("tricorr"; 
+    target_match_str = make_signal_stem("tricorr"; 
         excluded_artifact_grades=excluded_artifact_grades,
         preproc! = preproc!, postproc! = postproc!,
         assumption=assumption, conditioned_on=conditioned_on,

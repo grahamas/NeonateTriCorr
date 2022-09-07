@@ -110,6 +110,7 @@ end
 
 function motif_weights_based_on_pvalues(df, effect_sym, n_nonzero, n_signals)
     if isempty(df)
+        @warn "Defaulting to all signals b/c no results w/ p-values for this patient"
         return ones(n_signals) / n_signals
     end
     descending_significance = sort(zip(df.p, df[:, effect_sym], 1:n_signals) |> collect)
@@ -159,11 +160,8 @@ function calculate_ROC(full_detection_fn::Function, θs)
     DataFrame(rocnums)
 end
 
-function calculate_ROC(test_results_df::DataFrame, raw_signals::AbstractArray, signal_times, truth_bounds; signal_sym, window_fn, rolling_window_s, alert_grace_s, snippets_duration_s,  n_signals_used=5, n_θs=100, motif_weights_fn=motif_weights_based_on_pvalues)
-    window_len = rolling_window_s ÷ snippets_duration_s
-    n_signals = size(raw_signals,1)
-    max_significance_weights = motif_weights_fn(test_results_df, signal_sym, n_signals_used, n_signals)
-    rolled_signal = apply_rolling_deviation_window(raw_signals, window_fn, window_len) * max_significance_weights
+function calculate_ROC(raw_signals::AbstractArray, signal_times, truth_bounds, process_signal_fn::Function; alert_grace_s, snippets_duration_s, n_θs=100, processing_args...)
+    rolled_signal = process_signal_fn(raw_signals; snippets_duration_s=snippets_duration_s, processing_args...)
     min_θ, max_θ = calculate_threshold_range(rolled_signal, signal_times,truth_bounds; alert_grace_s=alert_grace_s)
     if !isfinite(min_θ)
         return nothing
@@ -176,110 +174,72 @@ function calculate_ROC(test_results_df::DataFrame, raw_signals::AbstractArray, s
     calculate_ROC(full_detection_fn, range(min_θ, max_θ, length=n_θs))
 end
 
+function calculate_anysignal_signal(raw_signals::NamedDimsArray; window_fn, rolling_window_s, snippets_duration_s)
+    raw_signals = NamedDimsArray{(:_, :time)}(raw_signals)
+    window_len = rolling_window_s ÷ snippets_duration_s
+    rolled_signal = apply_rolling_deviation_window(raw_signals, window_fn, window_len)
+    return maxmimum(abs.(rolled_signal), dims=1)
+end
+
+function calculate_maxsignificance_mean_signal(raw_signals::NamedDimsArray; 
+        signal_sym, window_fn, n_signals_used=5,
+        motif_weights_fn=motif_weights_based_on_pvalues,
+        rolling_window_s,
+        test_results_df::DataFrame,
+        snippets_duration_s, unused_params...
+    )
+    raw_signals = NamedDimsArray{(:_, :time)}(raw_signals)
+    window_len = rolling_window_s ÷ snippets_duration_s
+    n_signals = size(raw_signals,1)
+    max_significance_weights = motif_weights_fn(test_results_df, signal_sym, n_signals_used, n_signals)
+    rolled_signal = apply_rolling_deviation_window(raw_signals, window_fn, window_len) * max_significance_weights
+    return rolled_signal
+end
+
 function plot_μ_and_σ_signals_and_roc(args...; resolution=(1300, 1000), kwargs...)
     fig = Figure(resolution=resolution)
     plot_μ_and_σ_signals_and_roc!(fig, args...; kwargs...)
     return fig
 end
 
-
-function plot_μ_and_σ_signals_and_roc!(fig, results_df, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, rolling_window_s, example_θ, n_signals_used=5, snippets_duration_s, alert_grace_s, title)
-
-    rolling_window = rolling_window_s ÷ snippets_duration_s
-
-    n_signals = size(signals, 1)
-    max_significance_μ_weights = motif_weights_based_on_pvalues(results_df, :Δμ, n_signals_used, n_signals)
-    detections_mean = apply_rolling_deviation_window(signals, mean, rolling_window) * max_significance_μ_weights
-
-    max_significance_σ_weights = motif_weights_based_on_pvalues(results_df, :Δσ, n_signals_used, n_signals)
-    detections_std = apply_rolling_deviation_window(signals, std, rolling_window) * max_significance_σ_weights
-
-    fig[1,1:2] = ax_mean = Axis(fig; ylabel = "mean μ (five most significant channels)")
-    fig[2,1:2] = ax_std = Axis(fig; ylabel = "mean σ (five most significant channels)")
-    fig[3,1:2] = ax_rev = Axis(fig; ylabel = "# reviewers", xlabel = "time")
-    TriCorrApplications.plot_reviewer_consensus!(ax_rev, plot_eeg)
-    TriCorrApplications.plot_contribution!(ax_mean, plot_eeg, signal_times, detections_mean)
-    TriCorrApplications.plot_contribution!(ax_std, plot_eeg, signal_times, detections_std)
-    # hlines!(ax_mean, [example_θ], color=:red, linestyle=:dash)
-    # hlines!(ax_std, [example_θ], color=:red, linestyle=:dash)
-
-    roc_column = fig[:,end+1]
-    # save(joinpath(save_dir, "signals_patient$(PAT)_reviewers$(min_reviewers_per_seizure).png"), fig)
-
-
-    @info "Calculating ROC curve..."
-    signal_window_fns = Dict(
-        "σ" => (:Δσ, std),
-        "μ" => (:Δμ, mean)
-    )
+function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, rolling_window_s, snippets_duration_s, alert_grace_s, title, signals_reduction_params, reduce_signals_fn, signals_reduction_name)
+    
     seizures_with_grace_period = add_grace_to_truth_bounds(analysis_eeg.seizure_annotations, get_times(analysis_eeg, sample_rate=1/snippets_duration_s), alert_grace_s)
     seizure_and_artifact_bounds = merge_bounds(seizures_with_grace_period, analysis_eeg.artifact_annotations)
     non_seizure_hours = (analysis_eeg.duration + mapreduce((x) -> x[1] - x[2], +, seizure_and_artifact_bounds, init=0)) / (60 * 60)
-    duration_hours = analysis_eeg.duration / (60 * 60)
-    roc_drws = map(enumerate(["μ", "σ"])) do (i, signal_type)
-        signal_sym, window_fn = signal_window_fns[signal_type]
-        roc_data = calculate_ROC(results_df, signals, signal_times, truth_bounds; signal_sym=signal_sym, window_fn=window_fn, rolling_window_s=rolling_window_s, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, n_signals_used=n_signals_used, n_θs=100)
+
+    @info "Calculating ROC curve..."
+    signal_window_fns = Dict(
+        "σ" => (signal_sym=:Δσ, window_fn=std),
+        "μ" => (signal_sym=:Δμ, window_fn=mean)
+    )
+    map(enumerate(["μ", "σ"])) do (i, rolling_type)
+        rolling_reduction_params = signal_window_fns[rolling_type]
+        reduced_signal = reduce_signals_fn(signals; rolling_reduction_params..., signals_reduction_params...)
+
+        fig[i,1:2] = ax = Axis(fig; ylabel = "$(signals_reduction_name) $(rolling_type)")
+        TriCorrApplications.plot_contribution!(ax, plot_eeg, signal_times, reduced_signal)
+        # hlines!(ax_mean, [example_θ], color=:red, linestyle=:dash)
+        # hlines!(ax_std, [example_θ], color=:red, linestyle=:dash)
+    end
+    fig[3,1:2] = ax_rev = Axis(fig; ylabel = "# reviewers", xlabel = "time")
+    TriCorrApplications.plot_reviewer_consensus!(ax_rev, plot_eeg)
+
+    roc_column = fig[:,end+1]
+
+    map(enumerate(["μ", "σ"])) do (i, rolling_type)
+        rolling_reduction_params = signal_window_fns[rolling_type]
+        roc_data = calculate_ROC(signals, signal_times, truth_bounds, reduce_signals_fn; rolling_reduction_params..., rolling_window_s=rolling_window_s, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, n_θs=100, signals_reduction_params...)
         @info "done. Now plotting."
         
         if !isnothing(roc_data) && any(roc_data.gt_negative .!= 0) && any(roc_data.gt_positive .!= 0)
             roc_plt = data(roc_data) * mapping((:false_positives,:gt_negative) => ((f, gt) -> f / non_seizure_hours) => "FP/Hour", (:true_positives,:gt_positive)=> ((t, gt) -> t / gt) => "TPR") * visual(Lines, color=:blue, linewidth=5)
-            roc_drw = draw!(roc_column[i,1], roc_plt, axis=(title="$(title) ($(signal_type) signal)", limits=((0.,maximum(roc_data.gt_negative)/non_seizure_hours),(0.,1.))))
+            roc_drw = draw!(roc_column[i,1], roc_plt, axis=(title="$(title) (Rolling $(rolling_type) of $(signals_reduction_name))", limits=((0.,maximum(roc_data.gt_negative)/non_seizure_hours),(0.,1.))))
             @show "FP/Hr max = $(maximum(roc_data.gt_negative))/$(non_seizure_hours) = $(maximum(roc_data.gt_negative)/non_seizure_hours)"
 
             roc_drw
         else
             @warn "Cannot plot valid ROC curve: $(title)"
-        end
-    end
-    return fig
-end
-
-function plot_μ_comparison(args...; resolution=(1300, 1000), kwargs...)
-    fig = Figure(resolution=resolution)
-    plot_μ_comparison!(fig, args...; kwargs...)
-    return fig
-end
-
-
-function plot_μ_comparison!(fig, results_dfs, (aeeg_signal_times, aeeg_signals), (tricorr_signal_times, tricorr_signals), truth_bounds; eeg, rolling_window_s, n_signals_used=5, aeeg_snippets_duration_s, tricorr_snippets_duration_s, alert_grace_s, title)
-
-    aeeg_rolling_window = rolling_window_s ÷ aeeg_snippets_duration_s
-    tricorr_rolling_window = rolling_window_s ÷ tricorr_snippets_duration_s
-
-    aeeg_detections_mean, tricorr_detections_mean = map(zip(results_dfs, (aeeg_signals, tricorr_signals))) do (results_df, signals)
-        n_signals = size(signals, 1)
-        max_significance_μ_weights = motif_weights_based_on_pvalues(results_df, :Δμ, n_signals_used, n_signals)
-        detections_mean = apply_rolling_deviation_window(signals, mean, rolling_window) * max_significance_μ_weights
-    end
-
-    fig[1,1:2] = ax_mean_aeeg = Axis(fig; ylabel = "mean aEEG μ")
-    fig[2,1:2] = ax_mean_tricorr = Axis(fig; ylabel = "mean motif-class μ")
-    fig[3,1:2] = ax_rev = Axis(fig; ylabel = "# reviewers", xlabel = "time")
-    TriCorrApplications.plot_reviewer_consensus!(ax_rev, eeg)
-    TriCorrApplications.plot_contribution!(ax_mean_aeeg, eeg, aeeg_signal_times, tricorr_detections_mean)
-    TriCorrApplications.plot_contribution!(ax_mean_tricorr, eeg, tricorr_signal_times, aeeg_detections_mean)
-
-    roc_column = fig[:,end+1]
-    # save(joinpath(save_dir, "signals_patient$(PAT)_reviewers$(min_reviewers_per_seizure).png"), fig)
-
-
-    @info "Calculating ROC curve..."
-    signal_window_fns = Dict(
-        "σ" => (:Δσ, std),
-        "μ" => (:Δμ, mean)
-    )
-    df_names = ["aEEG", "TriCorr"]
-    roc_drws = map(enumerate(results_dfs)) do (i, results_df)
-        signal_type = "μ"
-        signal_sym, window_fn = signal_window_fns[signal_type]
-        roc_data = calculate_ROC(results_df, signals, signal_times, truth_bounds; signal_sym=signal_sym, window_fn=window_fn, rolling_window_s=rolling_window_s, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, n_signals_used=n_signals_used, n_θs=100)
-        @info "done. Now plotting."
-        
-        if !isnothing(roc_data)
-            roc_plt = data(roc_data) * mapping((:false_positives,:gt_negative) => ((f, gt) -> f / gt) => "FPR", (:true_positives,:gt_positive)=> ((t, gt) -> t / gt) => "TPR") * visual(Lines, color=:blue, linewidth=5)
-            roc_drw = draw!(roc_column[i,1], roc_plt, axis=(title="$(title) ($(signal_type) $(df_names[i]))", limits=((0.,1.),(0.,1.))))
-
-            roc_drw
         end
     end
     return fig

@@ -50,6 +50,7 @@ end
 
 function draw_significances_plot!(df; all_motifs = 1:14 .|> offset_motif_numeral, draw_kwargs...)
     summary = combine(groupby(df, :motif), :Δμ => std, :Δσ => std, :Δμ => mean, :Δσ => mean)
+    @show summary
     function normed_Δμ(xs, motifs)
         map(zip(xs, motifs)) do (x, motif)
             σ = only(filter(:motif => ==(motif), summary).Δμ_std)

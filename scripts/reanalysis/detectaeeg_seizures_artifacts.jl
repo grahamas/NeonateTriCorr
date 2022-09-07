@@ -48,7 +48,7 @@ drws = mapreduce(vcat, patients_considered) do patient_num
     signals = aeeg_lower_margin(aeeg)'
     signal_times = get_times(eeg, sample_rate=1/snippets_duration_s)
 
-    target_match_str = make_filename_stem("tricorr"; params...)
+    target_match_str = make_signal_stem("tricorr"; params...)
     jld_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
     signals = jld_dict["contributions"]
     signal_times = get_times(eeg, sample_rate=1/params[:snippets_duration_s])

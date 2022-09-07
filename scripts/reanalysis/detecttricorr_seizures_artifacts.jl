@@ -44,7 +44,7 @@ drws = mapreduce(vcat, patients_considered) do patient_num
 
     eeg = load_helsinki_eeg(patient_num; min_reviewers_per_seizure = min_reviewers_per_seizure, excluded_artifact_grades=excluded_artifact_grades)
 
-    target_match_str = make_filename_stem("tricorr"; params...)
+    target_match_str = make_signal_stem("tricorr"; params...)
     jld_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
     signals = jld_dict["contributions"]
     signal_times = get_times(eeg, sample_rate=1/params[:snippets_duration_s])
