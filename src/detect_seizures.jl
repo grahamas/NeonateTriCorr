@@ -93,13 +93,13 @@ function evaluate_detection_posseizure_negalerts(truth_bounds::Vector{<:Tuple}, 
     )
 end
 
-function apply_rolling_deviation_window(signals, window_fn, window_len)
+function apply_rolling_deviation_window(signals::ARR, window_fn, window_len) where ARR
     n_signals = size(signals, 1)
     window_red = mapreduce(hcat, 1:n_signals) do signal_num
         windowed = [window_fn(signals[signal_num,(i-window_len+1):(i)]) for i ∈ window_len:(size(signals,2))]
         (windowed .- mean(skipmissing(windowed))) ./ std(skipmissing(windowed))
     end
-    vcat(zeros(eltype(window_red), window_len-1, n_signals) .+ missing, window_red)
+    ARR(hcat(zeros(eltype(window_red), n_signals, window_len - 1) .+ missing, window_red'))
 end
 
 function detect_deviation_window(signals, window_fn, window_len, motifs_criterion)
@@ -174,27 +174,56 @@ function calculate_ROC(raw_signals::AbstractArray, signal_times, truth_bounds, p
     calculate_ROC(full_detection_fn, range(min_θ, max_θ, length=n_θs))
 end
 
-function calculate_anysignal_signal(raw_signals::NamedDimsArray; window_fn, rolling_window_s, snippets_duration_s)
+function reduce_signal_distance(raw_signals::NamedDimsArray; window_fn, rolling_window_s, snippets_duration_s, unused_params...)
     raw_signals = NamedDimsArray{(:_, :time)}(raw_signals)
     window_len = rolling_window_s ÷ snippets_duration_s
     rolled_signal = apply_rolling_deviation_window(raw_signals, window_fn, window_len)
-    return maxmimum(abs.(rolled_signal), dims=1)
+    count_nonmissing_times = count(.!ismissing.(sum(rolled_signal, dims=1)))
+    unmissing_rolled_signal = copy(rolled_signal)
+    unmissing_rolled_signal[ismissing.(rolled_signal)] .= 0.
+    mean_signal = sum(unmissing_rolled_signal, dims=2) ./ count_nonmissing_times
+    return vec(sqrt.(sum((rolled_signal .- mean_signal) .^ 2, dims=1)))
 end
 
-function calculate_maxsignificance_mean_signal(raw_signals::NamedDimsArray; 
+function reduce_signal_meanall(raw_signals::NamedDimsArray; window_fn, rolling_window_s, snippets_duration_s, unused_params...)
+    raw_signals = NamedDimsArray{(:_, :time)}(raw_signals)
+    window_len = rolling_window_s ÷ snippets_duration_s
+    rolled_signal = apply_rolling_deviation_window(raw_signals, window_fn, window_len)
+    return vec(maximum(abs.(rolled_signal), dims=1))
+end
+
+function reduce_signal_maxany(raw_signals::NamedDimsArray; window_fn, rolling_window_s, snippets_duration_s, unused_params...)
+    raw_signals = NamedDimsArray{(:_, :time)}(raw_signals)
+    window_len = rolling_window_s ÷ snippets_duration_s
+    rolled_signal = apply_rolling_deviation_window(raw_signals, window_fn, window_len)
+    return vec(abs.(mean(rolled_signal, dims=1)))
+end
+
+function reduce_signal_meansignificant(raw_signals::NamedDimsArray; 
         signal_sym, window_fn, n_signals_used=5,
         motif_weights_fn=motif_weights_based_on_pvalues,
         rolling_window_s,
-        test_results_df::DataFrame,
+        results_df::DataFrame,
         snippets_duration_s, unused_params...
     )
     raw_signals = NamedDimsArray{(:_, :time)}(raw_signals)
     window_len = rolling_window_s ÷ snippets_duration_s
     n_signals = size(raw_signals,1)
-    max_significance_weights = motif_weights_fn(test_results_df, signal_sym, n_signals_used, n_signals)
-    rolled_signal = apply_rolling_deviation_window(raw_signals, window_fn, window_len) * max_significance_weights
-    return rolled_signal
+    max_significance_weights = motif_weights_fn(results_df, signal_sym, n_signals_used, n_signals)
+    rolled_signal = max_significance_weights' * apply_rolling_deviation_window(raw_signals, window_fn, window_len)
+    return vec(rolled_signal)
 end
+
+
+function get_reduce_signals_fn(reduction_type)
+    Dict(
+        "maxany" => reduce_signal_maxany,
+        "meansignificant" => reduce_signal_meansignificant,
+        "meanall" => reduce_signal_meanall,
+        "distance" => reduce_signal_distance
+    )[reduction_type]
+end
+
 
 function plot_μ_and_σ_signals_and_roc(args...; resolution=(1300, 1000), kwargs...)
     fig = Figure(resolution=resolution)
@@ -202,7 +231,12 @@ function plot_μ_and_σ_signals_and_roc(args...; resolution=(1300, 1000), kwargs
     return fig
 end
 
-function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, rolling_window_s, snippets_duration_s, alert_grace_s, title, signals_reduction_params, reduce_signals_fn, signals_reduction_name)
+function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, rolling_window_s, snippets_duration_s, alert_grace_s, title, signals_reduction_params, signals_reduction_name, unused_params...)
+    reduce_signals_fn = get_reduce_signals_fn(signals_reduction_name)
+
+    if !isempty(unused_params)
+        @warn "Unused params: $unused_params"
+    end
     
     seizures_with_grace_period = add_grace_to_truth_bounds(analysis_eeg.seizure_annotations, get_times(analysis_eeg, sample_rate=1/snippets_duration_s), alert_grace_s)
     seizure_and_artifact_bounds = merge_bounds(seizures_with_grace_period, analysis_eeg.artifact_annotations)
@@ -215,12 +249,10 @@ function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bound
     )
     map(enumerate(["μ", "σ"])) do (i, rolling_type)
         rolling_reduction_params = signal_window_fns[rolling_type]
-        reduced_signal = reduce_signals_fn(signals; rolling_reduction_params..., signals_reduction_params...)
+        reduced_signal = reduce_signals_fn(signals; rolling_window_s=rolling_window_s, snippets_duration_s=snippets_duration_s, rolling_reduction_params..., signals_reduction_params...)
 
         fig[i,1:2] = ax = Axis(fig; ylabel = "$(signals_reduction_name) $(rolling_type)")
         TriCorrApplications.plot_contribution!(ax, plot_eeg, signal_times, reduced_signal)
-        # hlines!(ax_mean, [example_θ], color=:red, linestyle=:dash)
-        # hlines!(ax_std, [example_θ], color=:red, linestyle=:dash)
     end
     fig[3,1:2] = ax_rev = Axis(fig; ylabel = "# reviewers", xlabel = "time")
     TriCorrApplications.plot_reviewer_consensus!(ax_rev, plot_eeg)

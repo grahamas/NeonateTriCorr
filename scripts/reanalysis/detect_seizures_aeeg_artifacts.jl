@@ -39,7 +39,7 @@ drws = mapreduce(vcat, [1:15..., 19,31,44,47,50,62,75]) do patient_num
     # send eeg with artifacts indicated for plotting
     eeg_artifacts_highlighted = load_helsinki_eeg(patient_num; min_reviewers_per_seizure = min_reviewers_per_seizure, excluded_artifact_grades=Int[1])
     
-    fig = plot_μ_and_σ_signals_and_roc(results_df, signals, signal_times, seizure_bounds; analysis_eeg=eeg, plot_eeg=eeg_artifacts_highlighted, rolling_window_s=rolling_window_s, example_θ=3, n_signals_used=5, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, title="Patient $(patient_num)")
+    fig = plot_μ_and_σ_signals_and_roc(signals, signal_times, seizure_bounds; analysis_eeg=eeg, plot_eeg=eeg_artifacts_highlighted, rolling_window_s=rolling_window_s, example_θ=3, n_signals_used=5, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, title="Patient $(patient_num)")
 
     save(joinpath(save_dir, "roc_patient$(patient_num)_aeeg_reviewers$(min_reviewers_per_seizure)_artifacts.png"), fig)
 end
