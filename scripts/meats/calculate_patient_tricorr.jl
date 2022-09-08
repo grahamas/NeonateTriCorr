@@ -7,7 +7,8 @@ function calculate_patient_tricorr(patient_num;
         lag_extents, 
         plot_traces=true,
         force_recalculate_contributions=false,
-        parent_session_id=nothing
+        parent_session_id=nothing,
+        unused_params...
     )
 
     unique_id = if !isnothing(parent_session_id)
