@@ -20,7 +20,7 @@ params = Dict(
     :assumption => IndStdNormal(), :conditioned_on => None(),
     :lag_extents => (8,25), :patient_num => "",
     :min_reviewers_per_seizure => 3,
-    :excluded_artifact_grades => Int[1],
+    :excluded_artifact_grades => Int[],
     :min_dist_to_seizure => 30,
     :alert_grace_s => 60,
     :rolling_window_s => 60,
