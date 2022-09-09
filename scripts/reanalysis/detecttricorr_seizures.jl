@@ -40,7 +40,7 @@ function detect_patient_seizures(patient_num; save_dir,
     save(joinpath(save_dir, "$(task_name)_roc_patient$(patient_num)_reviewers$(min_reviewers_per_seizure).png"), fig)
 end
 
-let signal_type = "tricorr", reduction_type = "distance",
+let signal_type = "tricorr", reduction_type = "meansignificant",
     patients_considered = [1:15..., 19,31,44,47,50,62];
 
 params = Dict(
@@ -67,14 +67,13 @@ else
     maybe_dict["results_df"]
 end
 
-params[:signals_reduction_params][:results_df] = results_df
-
 detect_stem = make_detection_stem(signal_type, reduction_type; params...)
 save_dir = plotsdir("$(detect_stem)$(Dates.now())")
 mkpath(save_dir)
 
 drws = mapreduce(vcat, patients_considered) do patient_num
     patient_results = filter(:patient => p -> p == patient_num, results_df)
+    params[:signals_reduction_params][:results_df] = patient_results
     detect_patient_seizures(patient_num; save_dir=save_dir, task_name="$(signal_type)$(reduction_type)", params..., signals_reduction_name=reduction_type, patient_num=patient_num)
 end
 

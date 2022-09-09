@@ -41,15 +41,17 @@ function calculate_epoch_differences_single_patient(contributions;
         min_snippets_for_comparison,
         min_dist_to_seizure,
         snippets_duration_s,
+        rolling_window_s,
         unused_params...
     )
     mkpath(save_dir)
 
+    @show "snippets duration: $snippets_duration_s"
     signal_times = get_times(eeg, sample_rate=1/snippets_duration_s)
 
     seizure_bounds, consensus = load_helsinki_seizure_annotations(patient_num; min_reviewers_per_seizure=min_reviewers_per_seizure)
 
-    rolling_window = 60
+    rolling_window = rolling_window_s ÷ snippets_duration_s
     rolling_std_z = mapreduce(hcat, 1:14) do motif_num
         stds = [std(contributions[motif_num,(i-rolling_window+1):(i)]) for i ∈ rolling_window:(size(contributions,:time))]
         (stds .- mean(skipmissing(stds))) ./ std(skipmissing(stds))
@@ -59,13 +61,13 @@ function calculate_epoch_differences_single_patient(contributions;
         (means .- mean(skipmissing(means))) ./ std(skipmissing(means))
     end
 
-    fig_std = plot_contributions(eeg, get_times(eeg, sample_rate=1)[rolling_window:end], rolling_std_z'; title="Rolling σ (zscored per motif; window = $(rolling_window))", resolution=(800,1400))
+    fig_std = plot_contributions(eeg, signal_times[rolling_window:end], rolling_std_z'; title="Rolling σ (zscored per motif; window = $(rolling_window))", resolution=(800,1400))
     save(joinpath(save_dir, "contributions_standard_deviations_zscored_window$(rolling_window)_pat$(patient_num).png"), fig_std)
 
-    fig_mean = plot_contributions(eeg, get_times(eeg, sample_rate=1)[rolling_window:end], rolling_mean_z'; title="Rolling μ (zscored per motif; window = $(rolling_window))", resolution=(800,1400))
+    fig_mean = plot_contributions(eeg, signal_times[rolling_window:end], rolling_mean_z'; title="Rolling μ (zscored per motif; window = $(rolling_window))", resolution=(800,1400))
     save(joinpath(save_dir, "contributions_means_zscored_window$(rolling_window)_pat$(patient_num).png"), fig_mean)
 
-    rolling_window = 60
+    # SAME AS ABOVE, but not zscored
     rolling_std = mapreduce(hcat, 1:14) do motif_num
         [std(contributions[motif_num,(i-rolling_window+1):(i)]) for i ∈ rolling_window:(size(contributions,:time))]
     end
@@ -73,10 +75,10 @@ function calculate_epoch_differences_single_patient(contributions;
         [mean(contributions[motif_num,(i-rolling_window+1):(i)]) for i ∈ rolling_window:(size(contributions,:time))]
     end
 
-    fig_std = plot_contributions(eeg, get_times(eeg, sample_rate=1)[rolling_window:end], rolling_std'; title="Rolling σ (window = $(rolling_window))", resolution=(800,1400))
+    fig_std = plot_contributions(eeg, signal_times[rolling_window:end], rolling_std'; title="Rolling σ (window = $(rolling_window))", resolution=(800,1400))
     save(joinpath(save_dir, "contributions_standard_deviations_window$(rolling_window)_pat$(patient_num).png"), fig_std)
 
-    fig_mean = plot_contributions(eeg, get_times(eeg, sample_rate=1)[rolling_window:end], rolling_mean'; title="Rolling μ (window = $(rolling_window))", resolution=(800,1400))
+    fig_mean = plot_contributions(eeg, signal_times[rolling_window:end], rolling_mean'; title="Rolling μ (window = $(rolling_window))", resolution=(800,1400))
     save(joinpath(save_dir, "contributions_means_window$(rolling_window)_pat$(patient_num).png"), fig_mean)
 
     if isempty(seizure_bounds)
