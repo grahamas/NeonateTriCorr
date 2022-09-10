@@ -14,9 +14,11 @@ using HypothesisTests, CSV
 
 include(scriptsdir("include_src.jl"))
 
+
+
 params = Dict(
     :preproc! => TripleCorrelations.zscore!, 
-    :postproc! => TripleCorrelations.zscore!,
+    :postproc! => TripleCorrelations.identity!,
     :assumption => IndStdNormal(), :conditioned_on => None(),
     :lag_extents => (8,25), :patient_num => "",
     :min_reviewers_per_seizure => 3,
@@ -24,13 +26,13 @@ params = Dict(
     :min_dist_to_seizure => 30,
     :alert_grace_s => 60,
     :rolling_window_s => 60,
-    :snippets_duration_s => 15,
+    :snippets_duration_s => 1,
     :signals_reduction_params => Dict{Symbol,Any}(
         :n_signals_used => 5    
     )
 )
 contributions_PAT = calculate_patient_tricorr(PAT; 
-    params...
+    params..., plot_traces=false
 )
 
 force_recalculate_contributions = false

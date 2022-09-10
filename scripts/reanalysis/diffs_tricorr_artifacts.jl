@@ -24,7 +24,7 @@ params = Dict(
     :postproc! => TripleCorrelations.zscore!,
     :assumption => IndStdNormal(), :conditioned_on => None(),
     :lag_extents => (8,25),
-    :min_reviewers_per_seizure => 3,
+    :min_reviewers_per_seizure => 1,
     :excluded_artifact_grades => Int[],
     :min_dist_to_seizure => 30,
     :alert_grace_s => 60,

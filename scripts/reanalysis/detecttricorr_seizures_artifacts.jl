@@ -39,7 +39,7 @@ function detect_patient_seizures(patient_num; save_dir,
     save(joinpath(save_dir, "$(task_name)_roc_patient$(patient_num)_reviewers$(min_reviewers_per_seizure).png"), fig)
 end
 
-let signal_type = "tricorr", reduction_type = "maxany",
+let signal_type = "tricorr", reduction_type = "meanall",
     patients_considered = 1:75;#[1:15..., 19,31,44,47,50,62];
 
 params = Dict(
@@ -47,7 +47,7 @@ params = Dict(
     :postproc! => TripleCorrelations.zscore!,
     :assumption => IndStdNormal(), :conditioned_on => None(),
     :lag_extents => (8,25), :patient_num => "",
-    :min_reviewers_per_seizure => 3,
+    :min_reviewers_per_seizure => 1,
     :excluded_artifact_grades => Int[],
     :min_dist_to_seizure => 30,
     :alert_grace_s => 60,
