@@ -25,7 +25,7 @@ params = Dict(
     :preproc! => TripleCorrelations.zscore!, 
     :postproc! => TripleCorrelations.zscore!,
     :assumption => IndStdNormal(), :conditioned_on => None(),
-    :lag_extents => (8,25), :patient_num => ""
+    :lag_extents => (8,25)
 )
 
 rolling_window = Int(rolling_window_s / snippets_duration_s)

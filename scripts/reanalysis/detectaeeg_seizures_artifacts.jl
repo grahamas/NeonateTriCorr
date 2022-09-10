@@ -16,7 +16,7 @@ let signal_type = "aEEG", reduction_type = "meanall",
     patients_considered = 1:75;#[1:15..., 19,31,44,47,50,62];
 
     params = Dict(
-        :patient_num => "",
+        
         :min_reviewers_per_seizure => 3,
         :excluded_artifact_grades => Int[],
         :min_dist_to_seizure => 30,

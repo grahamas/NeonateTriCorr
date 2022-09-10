@@ -21,7 +21,7 @@ let patients = patients_all,
 
 
     params = Dict(
-        :patient_num => "",
+        
         :min_reviewers_per_seizure => 1,
         :excluded_artifact_grades => Int[],
         :min_dist_to_seizure => 30,

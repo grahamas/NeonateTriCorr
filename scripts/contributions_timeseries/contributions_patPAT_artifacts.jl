@@ -20,7 +20,7 @@ params = Dict(
     :preproc! => TripleCorrelations.zscore!, 
     :postproc! => TripleCorrelations.identity!,
     :assumption => IndStdNormal(), :conditioned_on => None(),
-    :lag_extents => (8,25), :patient_num => "",
+    :lag_extents => (8,25), 
     :min_reviewers_per_seizure => 3,
     :excluded_artifact_grades => Int[],
     :min_dist_to_seizure => 30,
