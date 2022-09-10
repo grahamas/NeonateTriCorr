@@ -36,6 +36,6 @@ params = Dict(
     :min_snippets_for_comparison => 15
 )
 
-(results_df, fig_sig, fig_Δμ, fig_Δσ) = calculate_epoch_differences_across_patients(signal_type, patients; params...)
+(results_df, fig_sig, fig_Δμ, fig_Δσ) = calculate_epoch_differences_across_patients(signal_type, patients; get_channel_label=offset_motif_numeral, params...)
 
 end

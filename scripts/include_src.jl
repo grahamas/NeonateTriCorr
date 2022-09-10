@@ -14,4 +14,5 @@ include(srcdir("aeeg.jl"))
 
 
 include(scriptsdir("meats/calculate_patient_tricorr.jl"))
+include(scriptsdir("meats/calculate_patient_aEEG.jl"))
 include(scriptsdir("meats/epoch_differences.jl"))

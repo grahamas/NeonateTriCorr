@@ -13,24 +13,49 @@ function artifacts_str(excluded_artifact_grades)
     end
 end
 
-function make_signal_stem(signal_type; excluded_artifact_grades, preproc!, postproc!, assumption, conditioned_on, snippets_duration_s, lag_extents, patient_num, unused_params...)
+function make_aEEG_stem(; excluded_artifact_grades, patient_num, lowpass_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc, unused_params...)
     if !isempty(unused_params)
         @warn "Signal filename provided unused parameters: $unused_params"
     end
     artifacts = artifacts_str(excluded_artifact_grades)
-    "$(signal_type)$(artifacts)_$(fn2str(preproc!))_$(fn2str(postproc!))_$(obj2str(assumption))_$(obj2str(conditioned_on))_snippets$(snippets_duration_s)_lagextents$(lag_extents[1])x$(lag_extents[2])_helsinkiEEG$(patient_num)_"
+    "aEEG$(artifacts)_snippets$(snippets_duration_s)_lowpass$(lowpass_freq)_lmargin$(lower_margin_perc)_umargin$(upper_margin_perc)_helsinkiEEG$(patient_num)_"
 end
 
-function make_tricorr_stem(; params...)
-    make_signal_stem("tricorr"; params...)
+function make_tricorr_stem(; excluded_artifact_grades, preproc!, postproc!, assumption, conditioned_on, snippets_duration_s, lag_extents, patient_num="", unused_params...)
+    if !isempty(unused_params)
+        @warn "Signal filename provided unused parameters: $unused_params"
+    end
+    artifacts = artifacts_str(excluded_artifact_grades)
+    "tricorr$(artifacts)_$(fn2str(preproc!))_$(fn2str(postproc!))_$(obj2str(assumption))_$(obj2str(conditioned_on))_snippets$(snippets_duration_s)_lagextents$(lag_extents[1])x$(lag_extents[2])_helsinkiEEG$(patient_num)_"
+end
+
+function make_signal_stem(signal_type; params...)
+    if signal_type == "tricorr"
+        make_tricorr_stem(; params...)
+    elseif signal_type == "aEEG"
+        make_aEEG_stem(; params...)
+    else
+        @error "Unsupported signal type: $signal_type"
+    end
 end
 
 function make_epochdiff_stem(signal_type; min_reviewers_per_seizure, min_dist_to_seizure, params...)
-    signal_stem = make_signal_stem("$(signal_type)epochdiff"; params...)
-    "$(signal_stem)nrev$(min_reviewers_per_seizure)_szdist$(min_dist_to_seizure)_"
+    signal_stem = make_signal_stem(signal_type; params...)
+    "epochdiff$(signal_stem)nrev$(min_reviewers_per_seizure)_szdist$(min_dist_to_seizure)_"
 end
 
 function make_detection_stem(signal_type, reduction_type; alert_grace_s, rolling_window_s, params...)
-    epochdiff_stem = make_epochdiff_stem("$(signal_type)$(reduction_type)detect"; params...)
-    "$(epochdiff_stem)grace$(alert_grace_s)_window$(rolling_window_s)_"
+    epochdiff_stem = make_epochdiff_stem(signal_type; params...)
+    "detect$(reduction_type)$(epochdiff_stem)grace$(alert_grace_s)_window$(rolling_window_s)_"
+end
+
+
+
+
+
+function convert_keys_to_strings(dct)
+    #shallow
+    Dict(
+        string(key) => val for (key, val) ∈ pairs(dct)
+    )
 end

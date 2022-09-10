@@ -52,7 +52,7 @@ function calculate_patient_tricorr(patient_num;
                 "postproc_str" => fn2str(postproc!)
             )
         )
-        return contributions
+        contributions
     else
         @info "Using cached triple correlation!"
         contributions = pop!(maybe_jld_dict, "contributions")
@@ -66,7 +66,7 @@ function calculate_patient_tricorr(patient_num;
             "postproc_str" => fn2str(postproc!)
         )
         @assert maybe_jld_dict == parameters
-        return contributions
+        contributions
     end
 
     if plot_traces
@@ -75,9 +75,9 @@ function calculate_patient_tricorr(patient_num;
         mkpath(plots_subdir)
 
         eeg_fig = draw_eeg_traces(eeg; title = "EEG (Patient $patient_num)", resolution=(1000,1600))
-        save(joinpath(plots_subdir, "pat$(patient_num)_eeg_traces.png"), eeg_fig)
+        save(joinpath(plots_subdir, "pat$(patient_num)_eeg.png"), eeg_fig)
 
-        times = get_times(eeg, sample_rate=snippets_duration_s)
+        times = get_times(eeg, sample_rate=1/snippets_duration_s)
         conts_fig = plot_contributions(eeg, times, contributions; title="Motif Contributions (Patient $patient_num)", resolution=(1000,1600))
         save(joinpath(plots_subdir, "pat$(patient_num)_contributions.png"), conts_fig)
     end

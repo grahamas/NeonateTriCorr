@@ -9,17 +9,23 @@ using KernelDensity
 
 include(scriptsdir("include_src.jl"))
 
-let PATs = [1:15..., 19,31,44,47,50,62];
-    # all pats are 1:75
-    # artifact annotated pats are [1:15..., 19,31,44,47,50,62]
+let signal_type = "tricorr", reduction_type = "distance",
+    patients_considered = [1:15..., 19,31,44,47,50,62];
 
 params = Dict(
-    :excluded_artifact_grades=>Int[],
-    :snippets_duration_s => 1,
     :preproc! => TripleCorrelations.zscore!, 
     :postproc! => TripleCorrelations.zscore!,
     :assumption => IndStdNormal(), :conditioned_on => None(),
-    :lag_extents => (8,25), :patient_num => PAT
+    :lag_extents => (8,25), :patient_num => "",
+    :min_reviewers_per_seizure => 3,
+    :excluded_artifact_grades => Int[1],
+    :min_dist_to_seizure => 30,
+    :alert_grace_s => 60,
+    :rolling_window_s => 60,
+    :snippets_duration_s => 1,
+    :signals_reduction_params => Dict{Symbol,Any}(
+        :n_signals_used => 5    
+    )
 )
 
 # download recordings if not present

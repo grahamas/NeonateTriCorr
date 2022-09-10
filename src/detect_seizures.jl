@@ -93,13 +93,13 @@ function evaluate_detection_posseizure_negalerts(truth_bounds::Vector{<:Tuple}, 
     )
 end
 
-function apply_rolling_deviation_window(signals::ARR, window_fn, window_len) where ARR
+function apply_rolling_deviation_window(signals::NamedDimsArray{L,T}, window_fn, window_len) where {L, T}
     n_signals = size(signals, 1)
     window_red = mapreduce(hcat, 1:n_signals) do signal_num
         windowed = [window_fn(signals[signal_num,(i-window_len+1):(i)]) for i ∈ window_len:(size(signals,2))]
         (windowed .- mean(skipmissing(windowed))) ./ std(skipmissing(windowed))
     end
-    ARR(hcat(zeros(eltype(window_red), n_signals, window_len - 1) .+ missing, window_red'))
+    NamedDimsArray{L}(hcat(zeros(Union{eltype(window_red),Missing}, n_signals, window_len - 1) .+ missing, window_red'))
 end
 
 function detect_deviation_window(signals, window_fn, window_len, motifs_criterion)
