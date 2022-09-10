@@ -12,33 +12,6 @@ using KernelDensity
 
 include(scriptsdir("include_src.jl"))
 
-function detect_patient_seizures(patient_num; save_dir,
-        excluded_artifact_grades, min_reviewers_per_seizure, snippets_duration_s,
-        task_name, remaining_params...
-    )
-    eeg = load_helsinki_eeg(patient_num; min_reviewers_per_seizure = min_reviewers_per_seizure, excluded_artifact_grades=excluded_artifact_grades)
-
-    target_match_str = make_aEEG_stem( ; 
-        excluded_artifact_grades=excluded_artifact_grades,
-        min_reviewers_per_seizure=min_reviewers_per_seizure,
-        snippets_duration_s=snippets_duration_s,
-        remaining_params...
-    )
-    maybe_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
-    signals = if isnothing(maybe_dict)
-        @error "No data like $target_match_str"
-    else
-        aEEG_lower_margin(maybe_dict["aEEG"])
-    end
-    signal_times = get_times(eeg, sample_rate=1/snippets_duration_s)
-
-    seizure_bounds, consensus = load_helsinki_seizure_annotations(patient_num; min_reviewers_per_seizure=min_reviewers_per_seizure)
-
-    fig = plot_μ_and_σ_signals_and_roc(signals, signal_times, seizure_bounds; analysis_eeg=eeg, snippets_duration_s=snippets_duration_s, title="Patient $(patient_num)", remaining_params...)
-
-    save(joinpath(save_dir, "$(task_name)_roc_patient$(patient_num)_reviewers$(min_reviewers_per_seizure).png"), fig)
-end
-
 let signal_type = "aEEG", reduction_type = "meanall",
     patients_considered = 1:75;#[1:15..., 19,31,44,47,50,62];
 
@@ -74,7 +47,7 @@ mkpath(save_dir)
 drws = mapreduce(vcat, patients_considered) do patient_num
     patient_results = filter(:patient => p -> p == patient_num, results_df)
     params[:signals_reduction_params][:results_df] = patient_results
-    detect_patient_seizures(patient_num; save_dir=save_dir, task_name="$(signal_type)$(reduction_type)", params..., signals_reduction_name=reduction_type, patient_num=patient_num)
+    detect_patient_seizures(patient_num; save_dir=save_dir, task_name="$(signal_type)$(reduction_type)", params..., signals_reduction_name=reduction_type, patient_num=patient_num, signals_from_dct_fn = (dct -> aEEG_lower_margin(dct["aEEG"])))
 end
 
 end
