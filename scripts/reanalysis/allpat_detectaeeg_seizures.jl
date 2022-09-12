@@ -12,25 +12,26 @@ using KernelDensity
 
 include(scriptsdir("include_src.jl"))
 
-let signal_type = "tricorr", signals_reduction_name = "meanall",
+let signal_type = "aEEG", signals_reduction_name = "meanall",
     patients_considered = 1:79;#[1:15..., 19,31,44,47,50,62];
 
 params = Dict(
-    :preproc! => TripleCorrelations.zscore!, 
-    :postproc! => TripleCorrelations.identity!,
-    :assumption => IndStdNormal(), :conditioned_on => None(),
-    :lag_extents => (8,25),
-    :min_reviewers_per_seizure => 3,
+    :min_reviewers_per_seizure => 1,
     :excluded_artifact_grades => Int[],
     :min_dist_to_seizure => 30,
     :alert_grace_s => 60,
-    :snippets_duration_s => 1,
+    :rolling_window_s => 60,
     :signals_reduction_params => Dict{Symbol,Any}(
         :n_signals_used => 5,
         :rolling_window_s => 60,
         :signal_sym => :Δμ,
         :window_fn => mean
     ),
+    :lowpass_freq => 0.31,
+    :snippets_duration_s => 15,
+    :lower_margin_perc => 0.09,
+    :upper_margin_perc => 0.93,
+    :min_snippets_for_comparison => 15,
     :n_θs => 100
 )
 
@@ -46,5 +47,5 @@ detect_stem = make_detection_stem(signal_type, signals_reduction_name; params...
 save_dir = plotsdir("$(detect_stem)$(Dates.now())")
 mkpath(save_dir)
 
-detect_all_patients_seizures(patients_considered; save_dir=save_dir, task_name="$(signal_type)$(signals_reduction_name)", params..., signals_reduction_name=signals_reduction_name, signal_from_dct_fn = (dct -> dct["contributions"]))
+detect_all_patients_seizures(patients_considered; signal_type=signal_type, save_dir=save_dir, task_name="$(signal_type)$(signals_reduction_name)", params..., signals_reduction_name=signals_reduction_name, signal_from_dct_fn = (dct -> aEEG_lower_margin(dct["aEEG"])))
 end

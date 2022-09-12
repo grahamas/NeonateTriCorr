@@ -13,10 +13,9 @@ using KernelDensity
 include(scriptsdir("include_src.jl"))
 
 let signal_type = "aEEG", reduction_type = "meanall",
-    patients_considered = 1:75;#[1:15..., 19,31,44,47,50,62];
+    patients_considered = 1:79;#[1:15..., 19,31,44,47,50,62];
 
     params = Dict(
-        
         :min_reviewers_per_seizure => 3,
         :excluded_artifact_grades => Int[],
         :min_dist_to_seizure => 30,
@@ -29,7 +28,8 @@ let signal_type = "aEEG", reduction_type = "meanall",
         :snippets_duration_s => 15,
         :lower_margin_perc => 0.09,
         :upper_margin_perc => 0.93,
-        :min_snippets_for_comparison => 15
+        :min_snippets_for_comparison => 15,
+        :n_θs => 100
     )
 
 epochdiff_stem = make_epochdiff_stem(signal_type; params...)

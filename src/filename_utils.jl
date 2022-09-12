@@ -13,7 +13,7 @@ function artifacts_str(excluded_artifact_grades)
     end
 end
 
-function make_aEEG_stem(; excluded_artifact_grades, patient_num, lowpass_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc, unused_params...)
+function make_aEEG_stem(; excluded_artifact_grades, patient_num="", lowpass_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc, unused_params...)
     if !isempty(unused_params)
         @warn "Signal filename provided unused parameters: $unused_params"
     end
