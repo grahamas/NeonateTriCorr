@@ -6,7 +6,8 @@ function add_nts(nt1::NT, nt2::NT) where {L, NT <: NamedTuple{L}}
     )
 end
 
-function detect_all_patients_seizures(patients_considered; save_dir,
+function detect_all_patients_seizures(patients_considered; signal_type,
+        save_dir,
         excluded_artifact_grades, min_reviewers_per_seizure, 
         snippets_duration_s, task_name, signal_from_dct_fn, 
         signals_reduction_name, signals_reduction_params,
@@ -18,7 +19,7 @@ function detect_all_patients_seizures(patients_considered; save_dir,
     # Step 1: Standardize signals across all patients
 
     signals = map(patients_considered) do patient_num
-        target_match_str = make_signal_stem("tricorr"; 
+        target_match_str = make_signal_stem(signal_type; 
             excluded_artifact_grades=excluded_artifact_grades,
             min_reviewers_per_seizure=min_reviewers_per_seizure,
             snippets_duration_s=snippets_duration_s,
@@ -33,6 +34,23 @@ function detect_all_patients_seizures(patients_considered; save_dir,
         end
     end
 
+    # need to validate that all signals are in same order
+
+    eegs = map(patients_considered) do patient_num
+        load_helsinki_eeg(patient_num; min_reviewers_per_seizure = min_reviewers_per_seizure, excluded_artifact_grades=excluded_artifact_grades)
+    end
+    channel_labels = eegs[1].labels
+    @assert length(channel_labels) == length(unique(channel_labels))
+    if !all(Ref(channel_labels) .== (eegs .|> (eeg -> eeg.labels)))
+        channel_labels = eegs[1].labels |> sort
+        @assert all(Ref(channel_labels |> sort) .== (eegs .|> (eeg -> sort(eeg.labels))))
+        for i_signal ∈ eachindex(signals)
+            eeg = eegs[i_signal]
+            resort_idxs = [findfirst(eeg.labels .== labels) for labels ∈ channel_labels]
+            signals[i_signal] = signals[i_signal][resort_idxs, :]
+        end
+    end
+
     cat_signals = cat(signals..., dims=:time)
     signal_means = mean(cat_signals, dims=:time) # FIXME doesn't handle missings
     signal_stds = std(cat_signals, dims=:time)
@@ -44,9 +62,6 @@ function detect_all_patients_seizures(patients_considered; save_dir,
 
     # Step 2: Calculate ROC across all patients
 
-    eegs = map(patients_considered) do patient_num
-        load_helsinki_eeg(patient_num; min_reviewers_per_seizure = min_reviewers_per_seizure, excluded_artifact_grades=excluded_artifact_grades)
-    end
     signal_times = map(eegs) do eeg
         get_times(eeg, sample_rate=1/snippets_duration_s)
     end
