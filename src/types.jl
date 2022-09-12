@@ -16,10 +16,10 @@ struct ProcessedEEGv8{T,SIG<:NamedDimsArray{(:channel,:time),T},ANN_T,ANN_T2,ANN
     excluded_artifact_grades::Vector{Int}
 end
 
-function get_signal_snippet(eeg::AbstractProcessedEEG, snippet_start_sec, snippet_stop_sec)
+function get_signal_snippet_sans_artifacts(eeg::AbstractProcessedEEG, snippet_start_sec, snippet_stop_sec)
     i_start = floor(Int, (snippet_start_sec*eeg.sample_rate)+1)
     i_end = floor(Int, (snippet_stop_sec)*eeg.sample_rate)
-    get_signal(eeg)[:, i_start:i_end]
+    get_signal_sans_artifacts(eeg)[:, i_start:i_end]
 end
 
 function TriCorrApplications.get_channel_names(eeg::ProcessedEEGv8)
