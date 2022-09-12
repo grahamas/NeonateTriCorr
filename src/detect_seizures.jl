@@ -109,10 +109,7 @@ function detect_deviation_window(signals, window_fn, window_len, motifs_criterio
 end
 
 function motif_weights_based_on_pvalues(df, effect_sym, n_nonzero, n_signals)
-    if isempty(df)
-        @warn "Defaulting to all signals b/c no results w/ p-values for this patient"
-        return ones(n_signals) / n_signals
-    end
+    @assert !isempty(df)
     descending_significance = sort(zip(df.p, df[:, effect_sym], 1:n_signals) |> collect)
     weights = zeros(n_signals)
     weights[descending_significance[1:n_nonzero] .|> x -> x[3]] .=(descending_significance[1:n_nonzero] .|> x -> sign(x[2]))
@@ -120,11 +117,7 @@ function motif_weights_based_on_pvalues(df, effect_sym, n_nonzero, n_signals)
 end
 
 function motif0_weight_based_effect(df, effect_sym, n_nonzero, n_signals)
-    if isempty(df)
-        weights = zeros(n_signals)
-        weights[1] = 1
-        return weights
-    end
+    @assert !isempty(df)
     weights = zeros(n_signals)
     weights[1] = sign(df[1, effect_sym])
     return weights
