@@ -12,12 +12,16 @@ using KernelDensity
 
 include(scriptsdir("include_src.jl"))
 
+patients_all = 1:79
+patients_artifact_annotated = [1:15..., 19,31,44,47,50,62,75]
+patients_unannotated = setdiff(patients_all, patients_artifact_annotated) 
+
 let signal_type = "aEEG", signals_reduction_name = "meanall",
-    patients_considered = 1:79;#[1:15..., 19,31,44,47,50,62];
+    patients_considered = 1:79;#[1:15..., 19,31,44,47,50,62,75];
 
 params = Dict(
-    :min_reviewers_per_seizure => 1,
-    :excluded_artifact_grades => Int[],
+    :min_reviewers_per_seizure => 3,
+    :excluded_artifact_grades => Int[1],
     :min_dist_to_seizure => 30,
     :alert_grace_s => 60,
     :rolling_window_s => 60,
