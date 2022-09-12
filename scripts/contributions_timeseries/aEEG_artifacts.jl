@@ -21,15 +21,19 @@ params = Dict(
     :alert_grace_s => 60,
     :rolling_window_s => 60,
     :signals_reduction_params => Dict{Symbol,Any}(
-        :n_signals_used => 5    
+        :n_signals_used => 5,
+        :rolling_window_s => 60,
+        :signal_sym => :Δμ,
+        :window_fn => mean
     ),
     :lowpass_freq => 0.31,
     :snippets_duration_s => 15,
     :lower_margin_perc => 0.09,
     :upper_margin_perc => 0.93,
-    :min_snippets_for_comparison => 15
+    :min_snippets_for_comparison => 15,
+    :n_θs => 100
 )
-for PAT ∈ 1:75
+for PAT ∈ 1:79
 aEEG_PAT = calculate_patient_aEEG(PAT; 
     params..., force_recalculate_aEEG=force_recalculate_aEEG,
     plot_traces = true
