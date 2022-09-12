@@ -152,6 +152,10 @@ function calculate_threshold_range(arr, arr_times, truth_bounds; alert_grace_s)
     extrema(skipmissing(arr))
 end
 
+function calculate_threshold_range(arrs::AbstractVector{<:AbstractArray}, arr_times=nothing, truth_bounds=nothing; alert_grace_s=nothing)
+    (minimum(minimum.(skipmissing.(arrs))) - sqrt(eps()), maximum(maximum.(skipmissing.(arrs))) + sqrt(eps()))
+end
+
 function calculate_ROC(full_detection_fn::Function, θs)
     rocnums = map(θs) do θ
         rocnum = full_detection_fn(θ)
@@ -173,6 +177,24 @@ function calculate_ROC(raw_signals::AbstractArray, signal_times, truth_bounds, p
 
     calculate_ROC(full_detection_fn, range(min_θ, max_θ, length=n_θs))
 end
+
+function calculate_AUC(roc_df::DataFrame)
+    roc_df = sort(roc_df, :θ, rev=true)
+    TPRs = roc_df.true_positives ./ roc_df.gt_positive
+    FPRs = roc_df.false_positives ./ roc_df.gt_negative
+    prev_fpr = 0.
+    prev_tpr = 0.
+    AUC = 0.
+    for (fpr, tpr) ∈ zip(FPRs, TPRs)
+        rect_area = (prev_tpr) * (fpr - prev_fpr)
+        triangle = 0.5 * (tpr - prev_tpr) * (fpr - prev_fpr) # when TPR and FPR change simulatenously
+        AUC += rect_area + triangle
+        prev_fpr = fpr
+        prev_tpr = tpr
+    end
+    return AUC
+end
+
 
 function reduce_signal_distance(raw_signals::NamedDimsArray; window_fn, rolling_window_s, snippets_duration_s, unused_params...)
     raw_signals = NamedDimsArray{(:_, :time)}(raw_signals)
@@ -231,7 +253,11 @@ function plot_μ_and_σ_signals_and_roc(args...; resolution=(1300, 1000), kwargs
     return fig
 end
 
-function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, rolling_window_s, snippets_duration_s, alert_grace_s, title, signals_reduction_params, signals_reduction_name, unused_params...)
+function calc_non_seizure_hours(eeg, bounds)
+    (eeg.duration + mapreduce((x) -> x[1] - x[2], +, bounds, init=0)) / (60 * 60)
+end
+
+function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, snippets_duration_s, alert_grace_s, title, signals_reduction_params, signals_reduction_name, unused_params...)
     reduce_signals_fn = get_reduce_signals_fn(signals_reduction_name)
 
     if !isempty(unused_params)
@@ -240,7 +266,7 @@ function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bound
     
     seizures_with_grace_period = add_grace_to_truth_bounds(analysis_eeg.seizure_annotations, get_times(analysis_eeg, sample_rate=1/snippets_duration_s), alert_grace_s)
     seizure_and_artifact_bounds = merge_bounds(seizures_with_grace_period, analysis_eeg.artifact_annotations)
-    non_seizure_hours = (analysis_eeg.duration + mapreduce((x) -> x[1] - x[2], +, seizure_and_artifact_bounds, init=0)) / (60 * 60)
+    non_seizure_hours = calc_non_seizure_hours(analysis_eeg, seizure_and_artifact_bounds)
 
     @info "Calculating ROC curve..."
     signal_window_fns = Dict(
@@ -249,7 +275,7 @@ function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bound
     )
     map(enumerate(["μ", "σ"])) do (i, rolling_type)
         rolling_reduction_params = signal_window_fns[rolling_type]
-        reduced_signal = reduce_signals_fn(signals; rolling_window_s=rolling_window_s, snippets_duration_s=snippets_duration_s, rolling_reduction_params..., signals_reduction_params...)
+        reduced_signal = reduce_signals_fn(signals;  snippets_duration_s=snippets_duration_s, signals_reduction_params..., rolling_reduction_params..., )
 
         fig[i,1:2] = ax = Axis(fig; ylabel = "$(signals_reduction_name) $(rolling_type)")
         TriCorrApplications.plot_contribution!(ax, plot_eeg, signal_times, reduced_signal)
@@ -261,18 +287,39 @@ function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bound
 
     map(enumerate(["μ", "σ"])) do (i, rolling_type)
         rolling_reduction_params = signal_window_fns[rolling_type]
-        roc_data = calculate_ROC(signals, signal_times, truth_bounds, reduce_signals_fn; rolling_reduction_params..., rolling_window_s=rolling_window_s, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, n_θs=100, signals_reduction_params...)
+        roc_data = calculate_ROC(signals, signal_times, truth_bounds, 
+            reduce_signals_fn; 
+            alert_grace_s=alert_grace_s, 
+            snippets_duration_s=snippets_duration_s, 
+            n_θs=100, 
+            signals_reduction_params..., 
+            rolling_reduction_params...
+        )
         @info "done. Now plotting."
         
         if !isnothing(roc_data) && any(roc_data.gt_negative .!= 0) && any(roc_data.gt_positive .!= 0)
-            roc_plt = data(roc_data) * mapping((:false_positives,:gt_negative) => ((f, gt) -> f / non_seizure_hours) => "FP/Hour", (:true_positives,:gt_positive)=> ((t, gt) -> t / gt) => "TPR") * visual(Lines, color=:blue, linewidth=5)
-            roc_drw = draw!(roc_column[i,1], roc_plt, axis=(title="$(title) (Rolling $(rolling_type) of $(signals_reduction_name))", limits=((0.,maximum(roc_data.gt_negative)/non_seizure_hours),(0.,1.))))
-            @show "FP/Hr max = $(maximum(roc_data.gt_negative))/$(non_seizure_hours) = $(maximum(roc_data.gt_negative)/non_seizure_hours)"
-
-            roc_drw
+            plot_seizure_detection_ROC!(roc_column[i,1], roc_data;
+                non_seizure_hours=non_seizure_hours, 
+                title="$(title) (Rolling $(rolling_type) of $(signals_reduction_name))"
+            )
         else
             @warn "Cannot plot valid ROC curve: $(title)"
         end
     end
     return fig
+end
+
+function plot_seizure_detection_ROC!(layout, roc_df::DataFrame; non_seizure_hours, title)
+    roc_plt = data(roc_df) * mapping(
+            (:false_positives,:gt_negative) => 
+                ((f, gt) -> f / non_seizure_hours) => 
+                "FP/Hour", 
+            (:true_positives,:gt_positive) => 
+                ((t, gt) -> t / gt) => 
+                "TPR"
+        ) * visual(Lines, color=:blue, linewidth=5)
+    roc_drw = draw!(layout, roc_plt, axis=(title=title, limits=((0.,maximum(roc_df.gt_negative)/non_seizure_hours),(0.,1.))))
+    @show "FP/Hr max = $(maximum(roc_df.gt_negative))/$(non_seizure_hours) = $(maximum(roc_df.gt_negative)/non_seizure_hours)"
+
+    roc_drw
 end

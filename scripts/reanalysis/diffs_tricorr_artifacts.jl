@@ -12,11 +12,11 @@ using KernelDensity
 
 include(scriptsdir("include_src.jl"))
 
-patients_all = 1:75
+patients_all = 1:79
 patients_artifact_annotated = [1:15..., 19,31,44,47,50,62]
 patients_unannotated = setdiff(patients_all, patients_artifact_annotated) 
 
-let patients = patients_all,
+let patients = 76:79,
     signal_type = "tricorr";
 
 params = Dict(

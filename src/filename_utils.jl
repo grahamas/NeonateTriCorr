@@ -44,14 +44,31 @@ function make_epochdiff_stem(signal_type; min_reviewers_per_seizure, min_dist_to
     "epochdiff$(signal_stem)nrev$(min_reviewers_per_seizure)_szdist$(min_dist_to_seizure)_"
 end
 
-function make_detection_stem(signal_type, reduction_type; alert_grace_s, rolling_window_s, params...)
+function make_detection_stem(signal_type, reduction_type; alert_grace_s, signals_reduction_params, params...)
     epochdiff_stem = make_epochdiff_stem(signal_type; params...)
-    "detect$(reduction_type)$(epochdiff_stem)grace$(alert_grace_s)_window$(rolling_window_s)_"
+    reductionstr = make_reduction_str(reduction_type; signals_reduction_params...)
+    "detect$(reduction_type)$(epochdiff_stem)grace$(alert_grace_s)_$(reductionstr)_"
 end
 
+function make_reduction_str(reduction_type; params...)
+    if reduction_type == "maxany"
+        make_reduction_maxany_str(; params...)
+    elseif reduction_type == "meansignificant"
+        make_reduction_meansignificant_str(; params...)
+    elseif reduction_type == "meanall"
+        make_reduction_meanall_str(; params...)
+    else
+        @error "Unsupported reduction type: $(reduction_type)"
+    end
+end
 
-
-
+function make_reduction_maxany_str(; rolling_window_s, unused...)
+    "window$(rolling_window_s)"
+end
+make_reduction_meanall_str = make_reduction_maxany_str
+function make_reduction_meansignificant_str(; rolling_window_s, n_signals_used, unused...)
+    "window$(rolling_window_s)_nsigs$(n_signals_used)"
+end
 
 function convert_keys_to_strings(dct)
     #shallow
