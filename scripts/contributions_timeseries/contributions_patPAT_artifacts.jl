@@ -14,8 +14,6 @@ using HypothesisTests, CSV
 
 include(scriptsdir("include_src.jl"))
 
-
-
 params = Dict(
     :preproc! => TripleCorrelations.zscore!, 
     :postproc! => TripleCorrelations.identity!,

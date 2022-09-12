@@ -39,8 +39,6 @@ function calculate_patient_aEEG(patient_num;
     end
 
     @warn "Only taking lower margin."
-    @show size(aEEG)
-    @show typeof(aEEG)
     aEEG = aEEG_lower_margin(aEEG)
 
     if plot_traces
@@ -52,8 +50,6 @@ function calculate_patient_aEEG(patient_num;
         # save(joinpath(plots_subdir, "pat$(patient_num)_eeg.png"), eeg_fig)
 
         times = get_times(eeg, sample_rate=1/snippets_duration_s)
-        @show length(times)
-        @show size(aEEG) typeof(aEEG)
         conts_fig = plot_contributions(eeg, times, aEEG; title="aEEG (Patient $patient_num)", resolution=(1000,1600), get_label=(i_ch -> eeg.labels[i_ch]))
         save(joinpath(plots_subdir, "pat$(patient_num)_aEEG.png"), conts_fig)
     end

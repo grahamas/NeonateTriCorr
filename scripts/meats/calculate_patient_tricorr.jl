@@ -1,5 +1,5 @@
 function calculate_patient_tricorr(patient_num;
-        excluded_artifact_grades=[1],
+        excluded_artifact_grades,
         eeg = load_helsinki_eeg(patient_num; excluded_artifact_grades=excluded_artifact_grades),
         snippets_duration_s, 
         preproc!, postproc!,
@@ -26,9 +26,6 @@ function calculate_patient_tricorr(patient_num;
     session_name = "$(target_match_str)$(unique_id)"
     @info "Running: $session_name"
 
-    if preproc! == TripleCorrelations.zscore!
-        preproc! = (o,i) -> TripleCorrelations.zscore!(o,i,mean(i),std(i))
-    end
     maybe_jld_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
     contributions = if isnothing(maybe_jld_dict) || force_recalculate_contributions
         @info "Calculating triple correlation..."

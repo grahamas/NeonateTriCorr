@@ -27,11 +27,8 @@ function detect_all_patients_seizures(patients_considered; signal_type,
             remaining_params...
         )
         maybe_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
-        if isnothing(maybe_dict)
-            @error "No data like $target_match_str"
-        else
-            signal_from_dct_fn(maybe_dict)
-        end
+        @assert !isnothing(maybe_dict) "No data like $target_match_str"
+        signal_from_dct_fn(maybe_dict)
     end
 
     # need to validate that all signals are in same order
@@ -39,15 +36,17 @@ function detect_all_patients_seizures(patients_considered; signal_type,
     eegs = map(patients_considered) do patient_num
         load_helsinki_eeg(patient_num; min_reviewers_per_seizure = min_reviewers_per_seizure, excluded_artifact_grades=excluded_artifact_grades)
     end
-    channel_labels = eegs[1].labels
-    @assert length(channel_labels) == length(unique(channel_labels))
-    if !all(Ref(channel_labels) .== (eegs .|> (eeg -> eeg.labels)))
-        channel_labels = eegs[1].labels |> sort
-        @assert all(Ref(channel_labels |> sort) .== (eegs .|> (eeg -> sort(eeg.labels))))
-        for i_signal ∈ eachindex(signals)
-            eeg = eegs[i_signal]
-            resort_idxs = [findfirst(eeg.labels .== labels) for labels ∈ channel_labels]
-            signals[i_signal] = signals[i_signal][resort_idxs, :]
+    if signal_type == "aEEG"
+        channel_labels = eegs[1].labels
+        @assert length(channel_labels) == length(unique(channel_labels))
+        if !all(Ref(channel_labels) .== (eegs .|> (eeg -> eeg.labels)))
+            channel_labels = eegs[1].labels |> sort
+            @assert all(Ref(channel_labels |> sort) .== (eegs .|> (eeg -> sort(eeg.labels))))
+            for i_signal ∈ eachindex(signals)
+                eeg = eegs[i_signal]
+                resort_idxs = [findfirst(eeg.labels .== labels) for labels ∈ channel_labels]
+                signals[i_signal] = signals[i_signal][resort_idxs, :]
+            end
         end
     end
 
