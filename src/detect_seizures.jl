@@ -302,17 +302,33 @@ function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bound
     return fig
 end
 
-function plot_seizure_detection_ROC!(layout, roc_df::DataFrame; non_seizure_hours, title)
-    roc_plt = data(roc_df) * mapping(
-            (:false_positives,:gt_negative) => 
-                ((f, gt) -> f / non_seizure_hours) => 
-                "FP/Hour", 
-            (:true_positives,:gt_positive) => 
-                ((t, gt) -> t / gt) => 
-                "TPR"
-        ) * visual(Lines, color=:blue, linewidth=5)
-    roc_drw = draw!(layout, roc_plt, axis=(title=title, limits=((0.,maximum(roc_df.gt_negative)/non_seizure_hours),(0.,1.))))
-    @show "FP/Hr max = $(maximum(roc_df.gt_negative))/$(non_seizure_hours) = $(maximum(roc_df.gt_negative)/non_seizure_hours)"
+function plot_seizure_detection_ROC!(layout, roc_df::DataFrame; non_seizure_hours, title, roc_plt = plot_NODRAW_seizure_detection_ROC!(roc_df, non_seizure_hours), unused_params...)
+    roc_drw = draw!(layout, roc_plt, axis=(title=title, 
+    #limits=((0.,maximum(roc_df.gt_negative)/non_seizure_hours),(0.,1.))
+    ))
 
     roc_drw
+end
+
+
+function plot_NODRAW_seizure_detection_ROC!(roc_df::DataFrame, non_seizure_hours; color=:blue)
+    data(roc_df) * mapping(
+        (:false_positives,:gt_negative) => 
+            ((f, gt) -> f / non_seizure_hours) => 
+            "FP/Hour", 
+        (:true_positives,:gt_positive) => 
+            ((t, gt) -> t / gt) => 
+            "TPR"
+    ) * visual(Lines, color=color, linewidth=5)
+end
+
+function plot_NODRAW_seizure_detection_ROC_standard!(roc_df::DataFrame, non_seizure_hours; color=:blue)
+    data(roc_df) * mapping(
+        (:false_positives,:gt_negative) => 
+            ((f, gt) -> f / gt) => 
+            "FPR", 
+        (:true_positives,:gt_positive) => 
+            ((t, gt) -> t / gt) => 
+            "TPR"
+    ) * visual(Lines, color=color, linewidth=5)
 end

@@ -50,5 +50,5 @@ detect_stem = make_detection_stem(signal_type, signals_reduction_name; params...
 save_dir = plotsdir("$(detect_stem)$(Dates.now())")
 mkpath(save_dir)
 
-detect_all_patients_seizures(patients_considered; signal_type=signal_type, save_dir=save_dir, task_name="$(signal_type)$(signals_reduction_name)", params..., signals_reduction_name=signals_reduction_name, signal_from_dct_fn = (dct -> dct["contributions"]))
+detect_all_patients_seizures(patients_considered; signal_type=signal_type, save_dir=save_dir, params..., signals_reduction_name=signals_reduction_name)
 end

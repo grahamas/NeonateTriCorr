@@ -318,3 +318,57 @@ function save_mat(eeg, matname)
     )
     matwrite(matname, matdct)
 end
+
+function save_multipatient_ROC_df(patients_considered, roc_df; signal_type, signals_reduction_name, session_id=Dates.now(), params...)
+    target_match_str = make_detection_stem(signal_type, signals_reduction_name;
+        params...
+    )
+    maybe_jld = load_most_recent_jld2(target_match_str, datadir("exp_pro", "roc_multipatient"))
+    multipatient_dfs = if isnothing(maybe_jld)
+        Dict(patients_considered => (roc_df, params))
+    else
+        multipatient_dfs = try
+             maybe_jld["multipatient_dfs_and_params"]
+        catch e
+            @error "Unexpected structure: $(keys(maybe_jld))"
+            throw(e)
+        end
+        if patients_considered ∈ keys(multipatient_dfs)
+            @warn "Overwriting multipatient dataframe in new file..."
+        end
+        multipatient_dfs[patients_considered] = (roc_df, params)
+        multipatient_dfs
+    end
+    save(datadir("exp_pro", "roc_multipatient", "$(target_match_str)$(session_id).jld2"), Dict("multipatient_dfs_and_params" => multipatient_dfs))
+end
+
+function get_signal_from_dct_fn(signal_type)
+    if signal_type == "tricorr"
+        (dct -> dct["contributions"])
+    elseif signal_type == "aEEG"
+        (dct -> aEEG_lower_margin(dct["aEEG"]))
+    else
+        error("Unsupported signal type")
+    end
+end
+
+function load_or_calculate_multipatient_ROC_df(patients_considered, signal_type, signals_reduction_name; params...)
+    detect_stem = make_detection_stem(signal_type, signals_reduction_name;
+        params...
+    )
+    maybe_multipatient_dfs_jld = load_most_recent_jld2(detect_stem, datadir("exp_pro", "roc_multipatient"))
+    if isnothing(maybe_multipatient_dfs_jld) || (patients_considered ∉ keys(maybe_multipatient_dfs_jld["multipatient_dfs_and_params"]))
+        @warn "Calculating multipatient ROC..."
+        # This function saves the jld2 and returns our df
+        session_id = Dates.now()
+        save_dir = plotsdir("$(detect_stem)$(session_id)")
+        mkpath(save_dir)
+        detect_all_patients_seizures(patients_considered; save_dir=save_dir, signal_type = signal_type, signals_reduction_name = signals_reduction_name, params...)
+        load_most_recent_jld2(detect_stem, datadir("exp_pro", "roc_multipatient"))["multipatient_dfs_and_params"][patients_considered]
+    else
+        @warn "Using precalculated multipatient ROC..."
+        maybe_multipatient_dfs_jld["multipatient_dfs_and_params"][patients_considered]
+    end
+end
+
+        

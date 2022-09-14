@@ -17,7 +17,7 @@ patients_artifact_annotated = [1:15..., 19,31,44,47,50,62,75]
 patients_unannotated = setdiff(patients_all, patients_artifact_annotated) 
 
 let signal_type = "aEEG", signals_reduction_name = "meanall",
-    patients_considered = 1:79;#[1:15..., 19,31,44,47,50,62,75];
+    patients_considered = [1:15..., 19,31,44,47,50,62,75];
 
 params = Dict(
     :min_reviewers_per_seizure => 3,
@@ -48,8 +48,9 @@ params = Dict(
 # end
 
 detect_stem = make_detection_stem(signal_type, signals_reduction_name; params...)
-save_dir = plotsdir("$(detect_stem)$(Dates.now())")
+session_id = Dates.now()
+save_dir = plotsdir("$(detect_stem)$(session_id)")
 mkpath(save_dir)
 
-detect_all_patients_seizures(patients_considered; signal_type=signal_type, save_dir=save_dir, task_name="$(signal_type)$(signals_reduction_name)", params..., signals_reduction_name=signals_reduction_name, signal_from_dct_fn = (dct -> aEEG_lower_margin(dct["aEEG"])))
+detect_all_patients_seizures(patients_considered; signal_type=signal_type, save_dir=save_dir, session_id=session_id, params..., signals_reduction_name=signals_reduction_name)
 end
