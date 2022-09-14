@@ -6,12 +6,12 @@ function add_nts(nt1::NT, nt2::NT) where {L, NT <: NamedTuple{L}}
     )
 end
 
-function detect_all_patients_seizures(patients_considered; signal_type,
+function detect_all_patients_seizures(patients_considered; signal_type, 
         save_dir,
         excluded_artifact_grades, min_reviewers_per_seizure, 
-        snippets_duration_s, task_name, signal_from_dct_fn, 
+        snippets_duration_s, signal_from_dct_fn = get_signal_from_dct_fn(signal_type), 
         signals_reduction_name, signals_reduction_params,
-        alert_grace_s, n_θs,
+        alert_grace_s, n_θs, task_name = "$(signal_type)$(signals_reduction_name)",
         roc_resolution=(800,600), remaining_params...
     )
     reduce_signals_fn = get_reduce_signals_fn(signals_reduction_name)
@@ -51,8 +51,9 @@ function detect_all_patients_seizures(patients_considered; signal_type,
     end
 
     cat_signals = cat(signals..., dims=:time)
-    signal_means = mean(cat_signals, dims=:time) # FIXME doesn't handle missings
-    signal_stds = std(cat_signals, dims=:time)
+    cat_not_missings = .!ismissing.(cat_signals[1,:])
+    signal_means = mean(cat_signals[:,cat_not_missings], dims=:time)
+    signal_stds = std(cat_signals[:,cat_not_missings], dims=:time)
 
     for idx ∈ eachindex(signals)
         signals[idx] .-= signal_means
@@ -116,6 +117,17 @@ function detect_all_patients_seizures(patients_considered; signal_type,
     end
 
     all_patient_ROC_df = calculate_ROC(detect_all_patients, range(min_θ, max_θ, length=n_θs))
+    save_multipatient_ROC_df(patients_considered, all_patient_ROC_df; 
+        signal_type=signal_type, 
+        excluded_artifact_grades=excluded_artifact_grades, 
+        min_reviewers_per_seizure=min_reviewers_per_seizure, 
+        snippets_duration_s=snippets_duration_s, task_name=task_name, 
+        signal_from_dct_fn=signal_from_dct_fn, 
+        signals_reduction_name=signals_reduction_name, 
+        signals_reduction_params=signals_reduction_params, 
+        non_seizure_hours=non_seizure_hours,
+        alert_grace_s=alert_grace_s, n_θs=n_θs, remaining_params...
+    )
 
     auc = calculate_AUC(all_patient_ROC_df)
     all_patient_fig = Figure(resolution=roc_resolution)
@@ -132,7 +144,7 @@ function detect_all_patients_seizures(patients_considered; signal_type,
     plot_seizure_detection_ROC!(clean_patient_fig[1,1], clean_patient_ROC_df; non_seizure_hours=non_seizure_hours_clean, title="Patients $(patients_considered); FPR from $(n_clean_patients) clean patients (AUC = $clean_auc)")
     save(joinpath(save_dir, "$(task_name)_$(length(patients_considered))_FPRclean_patients_roc_nrev$(min_reviewers_per_seizure).png"), clean_patient_fig)
 
-    # # Step 3: Calculate ROC for every standardized patient
+    # # Step 3: Calculate and plot ROC for every standardized patient
 
     for (patient_num, eeg, signal, times, bounds) ∈ zip(patients_considered, eegs, signals, signal_times, seizure_bounds)
         fig = plot_μ_and_σ_signals_and_roc(signal, times, bounds; analysis_eeg=eeg, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, 
@@ -141,5 +153,5 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         save(joinpath(save_dir, "$(task_name)_roc_patient$(patient_num)_nrev$(min_reviewers_per_seizure).png"), fig)
     end
 
-    return (all_patient_ROC_df, rolled_signals, signals)
+    return all_patient_ROC_df
 end
