@@ -22,10 +22,7 @@ params = Dict(
     :min_dist_to_seizure => 30,
     :alert_grace_s => 60,
     :rolling_window_s => 60,
-    :snippets_duration_s => 1,
-    :signals_reduction_params => Dict{Symbol,Any}(
-        :n_signals_used => 5    
-    )
+    :snippets_duration_s => 1
 )
 
 # download recordings if not present

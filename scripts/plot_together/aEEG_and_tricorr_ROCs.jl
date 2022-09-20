@@ -26,12 +26,8 @@ base_params = Dict(
     :min_dist_to_seizure => 30,
     :alert_grace_s => 60,
     :rolling_window_s => 60,
-    :signals_reduction_params => Dict{Symbol,Any}(
-        :n_signals_used => 5,
-        :rolling_window_s => 60,
-        :signal_sym => :Δμ,
-        :window_fn => mean
-    ),
+    :rolling_window_s => 60,
+    :window_fn => mean,
     :n_θs => 100
 )
 

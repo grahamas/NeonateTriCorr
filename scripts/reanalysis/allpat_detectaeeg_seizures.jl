@@ -16,27 +16,23 @@ patients_all = 1:79
 patients_artifact_annotated = [1:15..., 19,31,44,47,50,62,75]
 patients_unannotated = setdiff(patients_all, patients_artifact_annotated) 
 
-let signal_type = "aEEG", signals_reduction_name = "meanall",
-    patients_considered = [1:15..., 19,31,44,47,50,62,75];
+aeeg_sig_times_bounds = let signal_type = "aEEG", signals_reduction_name = "maxany",
+    patients_considered = patients_all;#:15..., 19,31,44,47,50,62,75];
 
 params = Dict(
     :min_reviewers_per_seizure => 3,
-    :excluded_artifact_grades => Int[1],
+    :excluded_artifact_grades => Int[],
     :min_dist_to_seizure => 30,
     :alert_grace_s => 60,
     :rolling_window_s => 60,
-    :signals_reduction_params => Dict{Symbol,Any}(
-        :n_signals_used => 5,
-        :rolling_window_s => 60,
-        :signal_sym => :Δμ,
-        :window_fn => mean
-    ),
+    :window_fn => mean,
     :lowpass_freq => 0.31,
     :snippets_duration_s => 15,
     :lower_margin_perc => 0.09,
     :upper_margin_perc => 0.93,
     :min_snippets_for_comparison => 15,
-    :n_θs => 100
+    :n_θs => 100,
+    :discretization_s => 15
 )
 
 # epochdiff_stem = make_epochdiff_stem(signal_type; params...)
@@ -53,4 +49,8 @@ save_dir = plotsdir("$(detect_stem)$(session_id)")
 mkpath(save_dir)
 
 detect_all_patients_seizures(patients_considered; signal_type=signal_type, save_dir=save_dir, session_id=session_id, params..., signals_reduction_name=signals_reduction_name)
-end
+end;
+
+# aeeg_results = mapreduce(add_nts, zip(aeeg_sig_times_bounds...)) do (signal, times, bounds)
+#     evaluate_detection_posseizure_negalerts(bounds, signal .> 1.0, times; snippets_duration_s=15, alert_grace_s=60)
+# end

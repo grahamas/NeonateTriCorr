@@ -25,10 +25,7 @@ params = Dict(
     :min_dist_to_seizure => 30,
     :alert_grace_s => 60,
     :rolling_window_s => 60,
-    :snippets_duration_s => 1,
-    :signals_reduction_params => Dict{Symbol,Any}(
-        :n_signals_used => 5    
-    )
+    :snippets_duration_s => 1
 )
 
 epochdiff_stem = make_epochdiff_stem(signal_type; params...)
@@ -45,7 +42,6 @@ mkpath(save_dir)
 
 drws = mapreduce(vcat, patients_considered) do patient_num
     patient_results = filter(:patient => p -> p == patient_num, results_df)
-    params[:signals_reduction_params][:results_df] = patient_results
     detect_patient_seizures(patient_num; save_dir=save_dir, task_name="$(signal_type)$(reduction_type)", params..., signals_reduction_name=reduction_type, patient_num=patient_num, signal_from_dct_fn = (dct -> dct["contributions"]))
 end
 

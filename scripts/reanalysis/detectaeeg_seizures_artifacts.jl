@@ -21,9 +21,6 @@ let signal_type = "aEEG", reduction_type = "meanall",
         :min_dist_to_seizure => 30,
         :alert_grace_s => 60,
         :rolling_window_s => 60,
-        :signals_reduction_params => Dict{Symbol,Any}(
-            :n_signals_used => 5    
-        ),
         :lowpass_freq => 0.31,
         :snippets_duration_s => 15,
         :lower_margin_perc => 0.09,
@@ -46,7 +43,6 @@ mkpath(save_dir)
 
 drws = mapreduce(vcat, patients_considered) do patient_num
     patient_results = filter(:patient => p -> p == patient_num, results_df)
-    params[:signals_reduction_params][:results_df] = patient_results
     detect_patient_seizures(patient_num; save_dir=save_dir, task_name="$(signal_type)$(reduction_type)", params..., signals_reduction_name=reduction_type, patient_num=patient_num, signals_from_dct_fn = (dct -> aEEG_lower_margin(dct["aEEG"])))
 end
 

@@ -48,10 +48,25 @@ end
 function TriCorrApplications.get_signal(eeg::ProcessedEEGv8)
     eeg.signals
 end
-function get_signal_sans_artifacts(eeg::ProcessedEEGv8)
+function get_signal_sans_artifacts(eeg::ProcessedEEGv8; discretization_s=nothing)
     sig = set_artifacts_missing(eeg.signals, eeg)
-    sig
+    if !isnothing(discretization_s)
+        discretization_step = floor(Int, discretization_s * eeg.sample_rate)
+        return discretize_missings!(sig, discretization_step)
+    end
+    return sig
 end
+
+function discretize_missings!(sig, discretization_step)
+    discrete_starts = 1:discretization_step:size(sig,:time)
+    for start ∈ discrete_starts
+        discrete_block = @view sig[:,start:min(start+discretization_step-1,size(sig,:time))]
+        if any(ismissing.(discrete_block))
+            discrete_block .= missing
+        end
+    end
+end
+
 
 
 

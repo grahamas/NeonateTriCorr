@@ -114,10 +114,29 @@ function calc_seizure_bounds(annotations::AbstractVector)
     end
 end
 
-function load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=3, kwargs...)
+function load_helsinki_seizure_annotations(eeg_num; start=0, min_reviewers_per_seizure=3, discretization_s, kwargs...)
     second_annotations = load_count_annotations(eeg_num; kwargs...)
     consensus_bounds = calc_seizure_bounds(second_annotations .>= min_reviewers_per_seizure)
+    if !isnothing(discretization_s)
+        consensus_bounds = discretize_bounds(consensus_bounds, discretization_s, start)
+    end
+    # expensive way to  combine overlapping bounds
+    consensus_bounds = merge_bounds(consensus_bounds, consensus_bounds)
     return (consensus_bounds, second_annotations)
+end
+
+function step_below(num::T, step, num_0) where T
+    floor(T, (num - num_0) / step) * step
+end
+function step_above(num::T, step, num_0) where T
+    ceil(T, (num - num_0) / step) * step
+end
+
+function discretize_bounds(bounds::ARR, step, bound_0) where ARR
+    # FIXME warning does not keep bounds within any constraints
+    ARR(map(bounds) do (start, stop)
+        (step_below(start, step, bound_0), step_above(stop, step, bound_0))
+    end)
 end
 
 function parse_grade(text)
@@ -170,7 +189,7 @@ function collapse_tuples!(tups::Array{T}) where T
     filter!(!=(dummy_val), tups)
 end
 
-function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start_time::Time=Time(EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf")).header.start))
+function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start_time::Time=Time(EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf")).header.start), discretization_s)
     df = CSV.read(scriptsdir("helsinki_artifacts.csv"), DataFrame)
     subset!(df, "Patient #" => ByRow(==(eeg_num)))
     output_df = DataFrame(
@@ -179,17 +198,18 @@ function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start
         duration = parse_artifact_duration.(df.Duration)
     )
     possibly_intersecting_tuples = Tuple{Int,Int}[artifact_tuple(t.start, t.duration) for t in eachrow(output_df) if t.grade ∈ excluded_grades]
+    possibly_intersecting_tuples = discretize_bounds(possibly_intersecting_tuples, discretization_s, start_time)
     collapse_tuples!(possibly_intersecting_tuples)
     return possibly_intersecting_tuples
 end
 
-function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_artifact_grades=[1])
+function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_artifact_grades=[1], discretization_s)
     edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
-    seizures_start_stop, seizure_reviewers_count = load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=min_reviewers_per_seizure)
+    seizures_start_stop, seizure_reviewers_count = load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=min_reviewers_per_seizure, discretization_s=discretization_s)
     ProcessedEEG(edf; 
         exclude_channels=helsinki_eeg_bad_channels[eeg_num], 
         seizure_annotations=seizures_start_stop, 
-        artifact_annotations=load_helsinki_artifact_annotations(eeg_num, excluded_artifact_grades; start_time=Time(edf.header.start)),
+        artifact_annotations=load_helsinki_artifact_annotations(eeg_num, excluded_artifact_grades; start_time=Time(edf.header.start), discretization_s=discretization_s),
         label_replace = (label) -> replace(replace(replace(label, "-Ref" => ""), "-REF"=>""), "EEG " => ""),
         mains_hz=50,
         seizure_reviewers_count = seizure_reviewers_count,
@@ -325,7 +345,7 @@ function save_multipatient_ROC_df(patients_considered, roc_df; signal_type, sign
     )
     maybe_jld = load_most_recent_jld2(target_match_str, datadir("exp_pro", "roc_multipatient"))
     multipatient_dfs = if isnothing(maybe_jld)
-        Dict(patients_considered => (roc_df, params))
+        Dict{Any,Any}(patients_considered => (roc_df, Dict(params)))
     else
         multipatient_dfs = try
              maybe_jld["multipatient_dfs_and_params"]
@@ -336,7 +356,7 @@ function save_multipatient_ROC_df(patients_considered, roc_df; signal_type, sign
         if patients_considered ∈ keys(multipatient_dfs)
             @warn "Overwriting multipatient dataframe in new file..."
         end
-        multipatient_dfs[patients_considered] = (roc_df, params)
+        multipatient_dfs[patients_considered] = (roc_df, Dict(params))
         multipatient_dfs
     end
     save(datadir("exp_pro", "roc_multipatient", "$(target_match_str)$(session_id).jld2"), Dict("multipatient_dfs_and_params" => multipatient_dfs))

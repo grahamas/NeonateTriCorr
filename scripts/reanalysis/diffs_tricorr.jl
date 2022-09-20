@@ -30,9 +30,6 @@ params = Dict(
     :alert_grace_s => 60,
     :rolling_window_s => 60,
     :snippets_duration_s => 15,
-    :signals_reduction_params => Dict{Symbol,Any}(
-        :n_signals_used => 5    
-    ),
     :min_snippets_for_comparison => 15
 )
 
