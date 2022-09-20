@@ -19,7 +19,7 @@ snippets_duration_s = 1
 contributions_spec = "tricorr_ts_zscore_zscore_IndStdNormal_None_snippets$(snippets_duration_s)_lagextents8x25_helsinkiEEG"
 save_dir = plotsdir("motif_0_$(contributions_spec)_reviewers$(min_reviewers_per_seizure)_$(Dates.now())")
 mkpath(save_dir)
-alert_grace_s = 60
+epoch_s = 60
 rolling_window_s = 60
 
 drws = mapreduce(vcat, [1:15..., 19,31,44,47,50,62]) do patient_num
@@ -36,7 +36,7 @@ drws = mapreduce(vcat, [1:15..., 19,31,44,47,50,62]) do patient_num
 
     seizure_bounds, consensus = load_helsinki_seizure_annotations(patient_num; min_reviewers_per_seizure=min_reviewers_per_seizure)
 
-    fig = plot_μ_and_σ_signals_and_roc(results_df, signals, signal_times, seizure_bounds; eeg=eeg, rolling_window_s=rolling_window_s, example_θ=3, n_signals_used=5, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, title="Patient $(patient_num)")
+    fig = plot_μ_and_σ_signals_and_roc(results_df, signals, signal_times, seizure_bounds; eeg=eeg, rolling_window_s=rolling_window_s, example_θ=3, n_signals_used=5, epoch_s=epoch_s, snippets_duration_s=snippets_duration_s, title="Patient $(patient_num)")
 
     save(joinpath(save_dir, "roc_patient$(patient_num)_motif0_reviewers$(min_reviewers_per_seizure).png"), fig)
 end

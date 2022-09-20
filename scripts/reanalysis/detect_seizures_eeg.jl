@@ -16,7 +16,7 @@ let min_reviewers_per_seizure = 3;
 all_patient_results_df = load(datadir("channel_results_df_reviewers$(min_reviewers_per_seizure).jld2"))["channel_results_df"]
 
 snippets_duration_s = 1
-alert_grace_s=60
+epoch_s=60
 rolling_window_s = 60
 
 save_dir = plotsdir("eeg_1Hz_reviewers$(min_reviewers_per_seizure)_$(Dates.now())")
@@ -41,7 +41,7 @@ drws = mapreduce(vcat, [1:15..., 19,31,44,47,50,62]) do patient_num
     @show size(signals)
     signal_times = get_times(eeg, sample_rate=snippets_duration_s)
 
-    fig = plot_μ_and_σ_signals_and_roc(results_df, signals, signal_times, seizure_bounds; eeg=eeg, rolling_window_s=rolling_window_s, example_θ=3, n_signals_used=1, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, title="Patient $(patient_num)")
+    fig = plot_μ_and_σ_signals_and_roc(results_df, signals, signal_times, seizure_bounds; eeg=eeg, rolling_window_s=rolling_window_s, example_θ=3, n_signals_used=1, epoch_s=epoch_s, snippets_duration_s=snippets_duration_s, title="Patient $(patient_num)")
 
     save(joinpath(save_dir, "roc_patient$(patient_num)_signals_reviewers$(min_reviewers_per_seizure).png"), fig)
 end

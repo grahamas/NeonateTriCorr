@@ -23,7 +23,7 @@ params = Dict(
     :min_reviewers_per_seizure => 1,
     :excluded_artifact_grades => Int[],
     :min_dist_to_seizure => 30,
-    :alert_grace_s => 60,
+    :epoch_s => 60,
     :rolling_window_s => 60,
     :snippets_duration_s => 1
 )

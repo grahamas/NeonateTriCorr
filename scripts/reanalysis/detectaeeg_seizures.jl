@@ -14,7 +14,7 @@ include(scriptsdir("include_src.jl"))
 
 let min_reviewers_per_seizure = 2,
     excluded_artifact_grades = Int[1],
-    alert_grace_s = 60,
+    epoch_s = 60,
     rolling_window_s = 60,
     snippets_duration_s = 15,
     patients_considered = [1:15..., 19,31,44,47,50,62];
@@ -33,7 +33,7 @@ all_patient_results_df = load(datadir("aeeg_$(snippets_duration_s)_lower_margin_
 
 task_name = "detectaeeg"
 save_root = make_filename_stem(task_name; params...)
-save_dir = plotsdir("$(save_root)_reviewers$(min_reviewers_per_seizure)_grace$(alert_grace_s)_window$(rolling_window_s)_$(Dates.now())")
+save_dir = plotsdir("$(save_root)_reviewers$(min_reviewers_per_seizure)_grace$(epoch_s)_window$(rolling_window_s)_$(Dates.now())")
 mkpath(save_dir)
 
 drws = mapreduce(vcat, patients_considered) do patient_num
@@ -50,7 +50,7 @@ drws = mapreduce(vcat, patients_considered) do patient_num
 
     seizure_bounds, consensus = load_helsinki_seizure_annotations(patient_num; min_reviewers_per_seizure=min_reviewers_per_seizure)
 
-    fig = plot_μ_and_σ_signals_and_roc(results_df, signals, signal_times, seizure_bounds; analysis_eeg=eeg, rolling_window_s=rolling_window_s, example_θ=3, n_signals_used=5, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, title="Patient $(patient_num)")
+    fig = plot_μ_and_σ_signals_and_roc(results_df, signals, signal_times, seizure_bounds; analysis_eeg=eeg, rolling_window_s=rolling_window_s, example_θ=3, n_signals_used=5, epoch_s=epoch_s, snippets_duration_s=snippets_duration_s, title="Patient $(patient_num)")
 
     save(joinpath(save_dir, "$(task_name)_roc_patient$(patient_num)_reviewers$(min_reviewers_per_seizure)$(artifacts_str(excluded_artifact_grades)).png"), fig)
 end

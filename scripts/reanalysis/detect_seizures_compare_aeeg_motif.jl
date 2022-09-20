@@ -18,7 +18,7 @@ let min_reviewers_per_seizure = 3;
 tricorr_snippets_duration_s = 1
 aeeg_snippets_duration_s = 15
 
-alert_grace_s = 60
+epoch_s = 60
 rolling_window_s = 60
 
 aeeg_rolling_window = Int(rolling_window_s / aeeg_snippets_duration_s)
@@ -27,7 +27,7 @@ tricorr_all_patient_results_df = load(datadir("motif_results_df_reviewers$(min_r
 aeeg_all_patient_results_df = load(datadir("aeeg_$(aeeg_snippets_duration_s)_lower_margin_results_df_reviewers$(min_reviewers_per_seizure)_window$(aeeg_rolling_window).jld2"))["channel_results_df"]
 
 tricorr_contributions_spec = "tricorr_ts_zscore_zscore_IndStdNormal_None_snippets$(tricorr_snippets_duration_s)_lagextents8x25_helsinkiEEG"
-save_dir = plotsdir("comparison_$(tricorr_contributions_spec)_aeegsnippets$(aeeg_snippets_duration_s)_grace$(alert_grace_s)_rolling$(rolling_window_s)_reviewers$(min_reviewers_per_seizure)_$(Dates.now())")
+save_dir = plotsdir("comparison_$(tricorr_contributions_spec)_aeegsnippets$(aeeg_snippets_duration_s)_epoch$(epoch_s)_rolling$(rolling_window_s)_reviewers$(min_reviewers_per_seizure)_$(Dates.now())")
 mkpath(save_dir)
 
 drws = mapreduce(vcat, [15]) do patient_num #1:15..., 19,31,44,47,50,62
@@ -48,7 +48,7 @@ drws = mapreduce(vcat, [15]) do patient_num #1:15..., 19,31,44,47,50,62
 
     seizure_bounds, consensus = load_helsinki_seizure_annotations(patient_num; min_reviewers_per_seizure=min_reviewers_per_seizure)
 
-    fig = plot_μ_comparison((aeeg_results_df, tricorr_results_df), (aeeg_signal_times, aeeg_signals), (tricorr_signal_times, tricorr_signals), seizure_bounds; eeg=eeg, rolling_window_s=rolling_window_s, example_θ=3, n_signals_used=5, alert_grace_s=alert_grace_s, aeeg_snippets_duration_s=aeeg_snippets_duration_s, tricorr_snippets_duration_s=tricorr_snippets_duration_s,  title="Patient $(patient_num)")
+    fig = plot_μ_comparison((aeeg_results_df, tricorr_results_df), (aeeg_signal_times, aeeg_signals), (tricorr_signal_times, tricorr_signals), seizure_bounds; eeg=eeg, rolling_window_s=rolling_window_s, example_θ=3, n_signals_used=5, epoch_s=epoch_s, aeeg_snippets_duration_s=aeeg_snippets_duration_s, tricorr_snippets_duration_s=tricorr_snippets_duration_s,  title="Patient $(patient_num)")
 
     save(joinpath(save_dir, "compare_roc_patient$(patient_num)_reviewers$(min_reviewers_per_seizure).png"), fig)
 end

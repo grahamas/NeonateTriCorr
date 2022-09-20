@@ -27,7 +27,7 @@ params = Dict(
     :min_reviewers_per_seizure => 3,
     :excluded_artifact_grades => Int[],
     :min_dist_to_seizure => 30,
-    :alert_grace_s => 60,
+    :epoch_s => 60,
     :snippets_duration_s => 1,
     :rolling_window_s => 60,
     :window_fn => mean,
@@ -51,5 +51,5 @@ detect_all_patients_seizures(patients_considered; signal_type=signal_type, save_
 end
 
 # tricorr_results = mapreduce(add_nts, zip(tricorr_sig_times_bounds...)) do (signal, times, bounds)
-#     evaluate_detection_posseizure_negalerts(bounds, signal .> 1.0, times; snippets_duration_s=1, alert_grace_s=60)
+#     evaluate_detection_posseizure_negalerts(bounds, signal .> 1.0, times; snippets_duration_s=1, epoch_s=60)
 # end

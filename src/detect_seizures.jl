@@ -21,9 +21,10 @@ function find_containing_bins(start, stop, bin_start_times)
     @assert stop_idx >= start_idx
     return start_idx:stop_idx
 end
-function evaluate_detection_posseizure_negepoch(truth_bounds::Vector{<:Tuple}, detections::Vector{T}, detections_times; epoch_bin_len) where T
+function evaluate_detection_posseizure_negepoch(truth_bounds::Vector{<:Tuple}, detections::Vector{T}, detections_times; epoch_s, snippets_duration_s) where T
     # One positive per seizure, one negative per non-seizure epoch
-    # 
+    epoch_bin_len = epoch_s ÷ snippets_duration_s
+    @assert epoch_bin_len * snippets_duration_s == epoch_s
     detections = coarse_grain_binary_signal(detections, epoch_bin_len)
     detections_times = detections_times[begin:epoch_bin_len:end]
     true_positives = 0
@@ -77,7 +78,7 @@ end
 
 # function evaluate_detection_posseizure_negalerts(truth_bounds::AbstractVector{<:Tuple}, detections::AbstractVector, detections_times; snippets_duration_s, alert_grace_s=60)
 #     # One positive per seizure, one negative per alert period
-#     alert_grace = alert_grace_s ÷ snippets_duration_s
+#     alert_grace = epoch_s ÷ snippets_duration_s
 #     detections = Vector{Union{Int,Missing}}(detections)
 #     len = length(detections)
 #     true_positives = 0
@@ -85,7 +86,7 @@ end
 #     true_negatives = 0
 #     false_negatives = 0
 #     valid_truth_bounds = [(on,off) for (on,off) ∈ truth_bounds if !all(ismissing.(detections[on .<= detections_times .< off]))]
-#     truth_bounds_with_grace = add_grace_to_truth_bounds(valid_truth_bounds, detections_times, alert_grace_s)
+#     truth_bounds_with_grace = add_grace_to_truth_bounds(valid_truth_bounds, detections_times, epoch_s)
 #     gt_positive = length(truth_bounds_with_grace)
 #     for (on, off) ∈ truth_bounds_with_grace # should combine adjacent seizures
 #         detected_seizure = any(skipmissing(detections[on .<= detections_times .< off]) .== 1)
@@ -176,7 +177,7 @@ function calculate_ROC(full_detection_fn::Function, θs)
     DataFrame(rocnums)
 end
 
-function calculate_ROC(raw_signals::AbstractArray, signal_times, truth_bounds, reduce_signals_fn::Function; alert_grace_s, snippets_duration_s, n_θs=100, processing_args...)
+function calculate_ROC(raw_signals::AbstractArray, signal_times, truth_bounds, reduce_signals_fn::Function; epoch_s, snippets_duration_s, n_θs=100, processing_args...)
     reduced_signal = reduce_signals_fn(raw_signals)
     min_θ, max_θ = calculate_threshold_range(reduced_signal)
     if !isfinite(min_θ)
@@ -184,7 +185,7 @@ function calculate_ROC(raw_signals::AbstractArray, signal_times, truth_bounds, r
     end
 
     function full_detection_fn(θ)
-        evaluate_detection_posseizure_negalerts(truth_bounds, reduced_signal .>= θ, signal_times; snippets_duration_s=snippets_duration_s, alert_grace_s=alert_grace_s)
+        evaluate_detection_posseizure_negalerts(truth_bounds, reduced_signal .>= θ, signal_times; snippets_duration_s=snippets_duration_s, epoch_s=epoch_s)
     end
 
     calculate_ROC(full_detection_fn, range(min_θ, max_θ, length=n_θs))
@@ -262,14 +263,14 @@ function calc_non_seizure_hours(eeg, bounds)
     (eeg.duration + mapreduce((x) -> x[1] - x[2], +, bounds, init=0)) / (60 * 60)
 end
 
-function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, snippets_duration_s, alert_grace_s, title, signals_reduction_name, unused_params...)
+function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, snippets_duration_s, epoch_s, title, signals_reduction_name, unused_params...)
     reduce_signals_fn = get_reduce_signals_fn(signals_reduction_name)
 
     if !isempty(unused_params)
         @warn "Unused params: $unused_params"
     end
     
-    seizures_with_grace_period = add_grace_to_truth_bounds(analysis_eeg.seizure_annotations, get_times(analysis_eeg, sample_rate=1/snippets_duration_s), alert_grace_s)
+    seizures_with_grace_period = add_grace_to_truth_bounds(analysis_eeg.seizure_annotations, get_times(analysis_eeg, sample_rate=1/snippets_duration_s), epoch_s)
     seizure_and_artifact_bounds = merge_bounds(seizures_with_grace_period, analysis_eeg.artifact_annotations)
     non_seizure_hours = calc_non_seizure_hours(analysis_eeg, seizure_and_artifact_bounds)
 
@@ -294,7 +295,7 @@ function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bound
         rolling_reduction_params = signal_window_fns[rolling_type]
         roc_data = calculate_ROC(signals, signal_times, truth_bounds, 
             reduce_signals_fn; 
-            alert_grace_s=alert_grace_s, 
+            epoch_s=epoch_s, 
             snippets_duration_s=snippets_duration_s, 
             n_θs=100, 
             rolling_reduction_params...

@@ -44,10 +44,10 @@ function make_epochdiff_stem(signal_type; min_reviewers_per_seizure, min_dist_to
     "epochdiff$(signal_stem)nrev$(min_reviewers_per_seizure)_szdist$(min_dist_to_seizure)_"
 end
 
-function make_detection_stem(signal_type, reduction_type; alert_grace_s,  params...)
+function make_detection_stem(signal_type, reduction_type; epoch_s,  params...)
     epochdiff_stem = make_epochdiff_stem(signal_type; params...)
     reductionstr = make_reduction_str(reduction_type; params...)
-    "detect$(reduction_type)$(epochdiff_stem)grace$(alert_grace_s)_$(reductionstr)_"
+    "nedetect$(reduction_type)$(epochdiff_stem)epoch$(epoch_s)_$(reductionstr)_"
 end
 
 function make_reduction_str(reduction_type; params...)

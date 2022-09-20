@@ -11,7 +11,7 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         excluded_artifact_grades, min_reviewers_per_seizure, 
         snippets_duration_s, signal_from_dct_fn = get_signal_from_dct_fn(signal_type), 
         signals_reduction_name,
-        alert_grace_s, n_θs, 
+        epoch_s, n_θs, 
         discretization_s,
         task_name = "$(signal_type)$(signals_reduction_name)",
         roc_resolution=(800,600), remaining_params...
@@ -90,7 +90,7 @@ function detect_all_patients_seizures(patients_considered; signal_type,
             false_positives_clean=0
         )
         for (signal, bounds, times) in zip(reduced_signals, seizure_bounds, signal_times)
-            single_patient_roc_vals = evaluate_detection_posseizure_negalerts(bounds, signal .>= θ, times; snippets_duration_s=snippets_duration_s, alert_grace_s=alert_grace_s)
+            single_patient_roc_vals = evaluate_detection_posseizure_negepoch(bounds, signal .>= θ, times; snippets_duration_s=snippets_duration_s, epoch_s=epoch_s)
             if isempty(bounds)
                 clean_negatives = add_nts(clean_negatives, (
                     gt_negative_clean=single_patient_roc_vals.gt_negative,
@@ -102,24 +102,6 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         return merge(roc_vals, clean_negatives)
     end
 
-    non_seizure_hours = mapreduce(+, eegs) do eeg
-        seizures_with_grace_period = add_grace_to_truth_bounds(
-            eeg.seizure_annotations, 
-            get_times(eeg, sample_rate=1/snippets_duration_s), 
-            alert_grace_s
-        )
-        seizure_and_artifact_bounds = merge_bounds(seizures_with_grace_period, eeg.artifact_annotations)
-        calc_non_seizure_hours(eeg, seizure_and_artifact_bounds)
-    end
-
-    non_seizure_hours_clean = mapreduce(+, eegs) do eeg
-        if isempty(eeg.seizure_annotations)
-            eeg.duration / (60 * 60)
-        else
-            0
-        end
-    end
-
     all_patient_ROC_df = calculate_ROC(detect_all_patients, range(min_θ, max_θ, length=n_θs))
     save_multipatient_ROC_df(patients_considered, all_patient_ROC_df; 
         signal_type=signal_type, 
@@ -129,28 +111,30 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         signal_from_dct_fn=signal_from_dct_fn, 
         signals_reduction_name=signals_reduction_name, 
         non_seizure_hours=non_seizure_hours,
-        alert_grace_s=alert_grace_s, n_θs=n_θs, remaining_params...
+        epoch_s=epoch_s, n_θs=n_θs, remaining_params...
     )
+
+    non_seizure_hours = all_patient_ROC_df.gt_negative[1] * epoch_s / (60 * 60)
 
     auc = calculate_AUC(all_patient_ROC_df)
     all_patient_fig = Figure(resolution=roc_resolution)
     plot_seizure_detection_ROC!(all_patient_fig[1,1], all_patient_ROC_df; non_seizure_hours=non_seizure_hours, title="Patients $(patients_considered) (AUC = $auc)")
     save(joinpath(save_dir, "$(task_name)_$(length(patients_considered))patients_roc_nrev$(min_reviewers_per_seizure).png"), all_patient_fig)
 
-    # Where the FPR is only from non-seizing patients
-    n_clean_patients = sum(isempty.(seizure_bounds))
-    clean_patient_ROC_df = copy(all_patient_ROC_df)
-    clean_patient_ROC_df.gt_negative = clean_patient_ROC_df.gt_negative_clean
-    clean_patient_ROC_df.false_positives = clean_patient_ROC_df.false_positives_clean
-    clean_auc = calculate_AUC(clean_patient_ROC_df)
-    clean_patient_fig = Figure(resolution=roc_resolution)
-    plot_seizure_detection_ROC!(clean_patient_fig[1,1], clean_patient_ROC_df; non_seizure_hours=non_seizure_hours_clean, title="Patients $(patients_considered); FPR from $(n_clean_patients) clean patients (AUC = $clean_auc)")
-    save(joinpath(save_dir, "$(task_name)_$(length(patients_considered))_FPRclean_patients_roc_nrev$(min_reviewers_per_seizure).png"), clean_patient_fig)
+    # # Where the FPR is only from non-seizing patients
+    # n_clean_patients = sum(isempty.(seizure_bounds))
+    # clean_patient_ROC_df = copy(all_patient_ROC_df)
+    # clean_patient_ROC_df.gt_negative = clean_patient_ROC_df.gt_negative_clean
+    # clean_patient_ROC_df.false_positives = clean_patient_ROC_df.false_positives_clean
+    # clean_auc = calculate_AUC(clean_patient_ROC_df)
+    # clean_patient_fig = Figure(resolution=roc_resolution)
+    # plot_seizure_detection_ROC!(clean_patient_fig[1,1], clean_patient_ROC_df; non_seizure_hours=non_seizure_hours_clean, title="Patients $(patients_considered); FPR from $(n_clean_patients) clean patients (AUC = $clean_auc)")
+    # save(joinpath(save_dir, "$(task_name)_$(length(patients_considered))_FPRclean_patients_roc_nrev$(min_reviewers_per_seizure).png"), clean_patient_fig)
 
     # # Step 3: Calculate and plot ROC for every standardized patient
 
     for (patient_num, eeg, signal, times, bounds) ∈ zip(patients_considered, eegs, signals, signal_times, seizure_bounds)
-        fig = plot_μ_and_σ_signals_and_roc(signal, times, bounds; analysis_eeg=eeg, alert_grace_s=alert_grace_s, snippets_duration_s=snippets_duration_s, 
+        fig = plot_μ_and_σ_signals_and_roc(signal, times, bounds; analysis_eeg=eeg, epoch_s=epoch_s, snippets_duration_s=snippets_duration_s, 
         signals_reduction_name=signals_reduction_name, title="Patient $(patient_num)", remaining_params...)
 
         save(joinpath(save_dir, "$(task_name)_roc_patient$(patient_num)_nrev$(min_reviewers_per_seizure).png"), fig)
@@ -161,7 +145,7 @@ end
 
 function evaluate_clinician_FPR(patients_considered; 
     excluded_artifact_grades,
-    alert_grace_s, remaining_params...
+    epoch_s, remaining_params...
 )
 
     non_seizure_hours = 0
@@ -178,15 +162,7 @@ function evaluate_clinician_FPR(patients_considered;
         for (sr,sp) ∈ any_clinician_bounds
             detections[sr:sp] .= true
         end
-        results = evaluate_detection_posseizure_negalerts(truth_bounds, detections, times; snippets_duration_s=1, alert_grace_s=alert_grace_s)
-
-        seizures_with_grace_period = add_grace_to_truth_bounds(
-            eeg.seizure_annotations, 
-            times, 
-            alert_grace_s
-        )
-        seizure_and_artifact_bounds = merge_bounds(seizures_with_grace_period, eeg.artifact_annotations)
-        non_seizure_hours += calc_non_seizure_hours(eeg, seizure_and_artifact_bounds)
+        results = evaluate_detection_posseizure_negepoch(truth_bounds, detections, times; snippets_duration_s=1, epoch_s=epoch_s)
         return (eeg, results)
     end
 
