@@ -17,11 +17,11 @@ patients_artifact_annotated = [1:15..., 19,31,44,47,50,62,75]
 patients_unannotated = setdiff(patients_all, patients_artifact_annotated) 
 
 aeeg_sig_times_bounds = let signal_type = "aEEG", signals_reduction_name = "maxany",
-    patients_considered = patients_all;#:15..., 19,31,44,47,50,62,75];
+    patients_considered = patients_artifact_annotated;
 
 params = Dict(
     :min_reviewers_per_seizure => 3,
-    :excluded_artifact_grades => Int[],
+    :excluded_artifact_grades => Int[1],
     :min_dist_to_seizure => 30,
     :epoch_s => 60,
     :rolling_window_s => 60,
@@ -52,5 +52,5 @@ detect_all_patients_seizures(patients_considered; signal_type=signal_type, save_
 end;
 
 # aeeg_results = mapreduce(add_nts, zip(aeeg_sig_times_bounds...)) do (signal, times, bounds)
-#     evaluate_detection_posseizure_negalerts(bounds, signal .> 1.0, times; snippets_duration_s=15, epoch_s=60)
+#     evaluate_detection_posseizure_negepoch(bounds, signal .> 1.0, times; snippets_duration_s=15, epoch_s=60)
 # end

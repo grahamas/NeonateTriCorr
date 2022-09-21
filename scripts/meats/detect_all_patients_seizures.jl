@@ -80,8 +80,11 @@ function detect_all_patients_seizures(patients_considered; signal_type,
 
     reduced_signals = reduce_signals_fn.(rolled_signals)
 
+    non_seizure_hours = mapreduce(+, seizure_bounds, signal_times) do bounds, times
+        calculate_negepoch_non_seizure_hours(bounds, times, epoch_s, snippets_duration_s)
+    end
+
     min_θ, max_θ = calculate_threshold_range(reduced_signals)
-    @show min_θ max_θ
 
     function detect_all_patients(θ)
         roc_vals = nothing
@@ -99,6 +102,9 @@ function detect_all_patients_seizures(patients_considered; signal_type,
             end
             roc_vals = add_nts(roc_vals, single_patient_roc_vals)
         end
+        non_seizure_hours = mapreduce(+, seizure_bounds, signal_times) do bounds, times
+            calculate_negepoch_non_seizure_hours(bounds, times, epoch_s, snippets_duration_s)
+        end
         return merge(roc_vals, clean_negatives)
     end
 
@@ -114,11 +120,9 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         epoch_s=epoch_s, n_θs=n_θs, remaining_params...
     )
 
-    non_seizure_hours = all_patient_ROC_df.gt_negative[1] * epoch_s / (60 * 60)
-
     auc = calculate_AUC(all_patient_ROC_df)
     all_patient_fig = Figure(resolution=roc_resolution)
-    plot_seizure_detection_ROC!(all_patient_fig[1,1], all_patient_ROC_df; non_seizure_hours=non_seizure_hours, title="Patients $(patients_considered) (AUC = $auc)")
+    plot_seizure_detection_ROC!(all_patient_fig[1,1], all_patient_ROC_df; epoch_s=epoch_s, non_seizure_hours=non_seizure_hours, title="Patients $(patients_considered) (AUC = $auc)")
     save(joinpath(save_dir, "$(task_name)_$(length(patients_considered))patients_roc_nrev$(min_reviewers_per_seizure).png"), all_patient_fig)
 
     # # Where the FPR is only from non-seizing patients
@@ -135,7 +139,7 @@ function detect_all_patients_seizures(patients_considered; signal_type,
 
     for (patient_num, eeg, signal, times, bounds) ∈ zip(patients_considered, eegs, signals, signal_times, seizure_bounds)
         fig = plot_μ_and_σ_signals_and_roc(signal, times, bounds; analysis_eeg=eeg, epoch_s=epoch_s, snippets_duration_s=snippets_duration_s, 
-        signals_reduction_name=signals_reduction_name, title="Patient $(patient_num)", remaining_params...)
+        signals_reduction_name=signals_reduction_name, title="Patient $(patient_num) (within standardized)", remaining_params...)
 
         save(joinpath(save_dir, "$(task_name)_roc_patient$(patient_num)_nrev$(min_reviewers_per_seizure).png"), fig)
     end
@@ -168,9 +172,6 @@ function evaluate_clinician_FPR(patients_considered;
 
     eegs = first.(eegs_and_results)
     all_patient_results = reduce(add_nts, last.(eegs_and_results))
-
-    @info "FPR = $(all_patient_results.false_positives / all_patient_results.gt_negative)"
-    @info "FP/Hr = $(all_patient_results.false_positives / non_seizure_hours)"
 
     return (eegs, all_patient_results)
 

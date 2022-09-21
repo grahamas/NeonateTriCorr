@@ -114,29 +114,15 @@ function calc_seizure_bounds(annotations::AbstractVector)
     end
 end
 
-function load_helsinki_seizure_annotations(eeg_num; start=0, min_reviewers_per_seizure=3, discretization_s, kwargs...)
+function load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=3, discretization_s, kwargs...)
     second_annotations = load_count_annotations(eeg_num; kwargs...)
     consensus_bounds = calc_seizure_bounds(second_annotations .>= min_reviewers_per_seizure)
     if !isnothing(discretization_s)
-        consensus_bounds = discretize_bounds(consensus_bounds, discretization_s, start)
+        consensus_bounds = discretize_bounds(consensus_bounds, discretization_s)
     end
     # expensive way to  combine overlapping bounds
     consensus_bounds = merge_bounds(consensus_bounds, consensus_bounds)
     return (consensus_bounds, second_annotations)
-end
-
-function step_below(num::T, step, num_0) where T
-    floor(T, (num - num_0) / step) * step
-end
-function step_above(num::T, step, num_0) where T
-    ceil(T, (num - num_0) / step) * step
-end
-
-function discretize_bounds(bounds::ARR, step, bound_0) where ARR
-    # FIXME warning does not keep bounds within any constraints
-    ARR(map(bounds) do (start, stop)
-        (step_below(start, step, bound_0), step_above(stop, step, bound_0))
-    end)
 end
 
 function parse_grade(text)
@@ -198,7 +184,7 @@ function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start
         duration = parse_artifact_duration.(df.Duration)
     )
     possibly_intersecting_tuples = Tuple{Int,Int}[artifact_tuple(t.start, t.duration) for t in eachrow(output_df) if t.grade ∈ excluded_grades]
-    possibly_intersecting_tuples = discretize_bounds(possibly_intersecting_tuples, discretization_s, start_time)
+    possibly_intersecting_tuples = discretize_bounds(possibly_intersecting_tuples, discretization_s)
     collapse_tuples!(possibly_intersecting_tuples)
     return possibly_intersecting_tuples
 end

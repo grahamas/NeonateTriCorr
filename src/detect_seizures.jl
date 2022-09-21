@@ -7,7 +7,12 @@ function coarse_grain_binary_signal(signal::AbstractVector{<:Union{Bool,Missing}
     coarse_grained_signal_len = ceil(Int, length(signal) / super_bin_len)
     coarse_grained_signal = zeros(Union{Bool,Missing}, coarse_grained_signal_len)
     for (i_sig, i_sup) ∈ zip(firstindex(signal):super_bin_len:lastindex(signal), 1:coarse_grained_signal_len)
-        coarse_grained_signal[i_sup] = any(signal[i_sig:min(i_sig+super_bin_len-1,lastindex(signal))])
+        fine_grained = signal[i_sig:min(i_sig+super_bin_len-1,lastindex(signal))]
+        if any(ismissing.(fine_grained))
+            coarse_grained_signal[i_sup] = missing
+        else
+            coarse_grained_signal[i_sup] = any(fine_grained)
+        end
     end
     coarse_grained_signal
 end
@@ -17,11 +22,22 @@ function find_containing_bins(start, stop, bin_start_times)
     if start_idx == lastindex(bin_start_times)
         return Int[]
     end
-    stop_idx = not_nothing(findfirst(bin_start_times .>= stop)-1, lastindex(bin_start_times))
+    stop_idx = not_nothing(findfirst(bin_start_times .>= stop), lastindex(bin_start_times)+1)-1
     @assert stop_idx >= start_idx
     return start_idx:stop_idx
 end
-function evaluate_detection_posseizure_negepoch(truth_bounds::Vector{<:Tuple}, detections::Vector{T}, detections_times; epoch_s, snippets_duration_s) where T
+
+function calculate_negepoch_non_seizure_hours(bounds, times, epoch_s, snippet_s)
+    epoch = epoch_s ÷ snippet_s
+    coarse_times = times[begin:epoch:end]
+    seizure_epochs = mapreduce(+, bounds, init=0) do (on, off)
+        bin_idxs = find_containing_bins(on, off, coarse_times)
+        length(bin_idxs)
+    end
+    return (length(coarse_times) - seizure_epochs) * epoch_s / (60 * 60)
+end
+
+function evaluate_detection_posseizure_negepoch(truth_bounds::Vector{<:Tuple}, detections::AbstractVector, detections_times; epoch_s, snippets_duration_s)
     # One positive per seizure, one negative per non-seizure epoch
     epoch_bin_len = epoch_s ÷ snippets_duration_s
     @assert epoch_bin_len * snippets_duration_s == epoch_s
@@ -31,21 +47,28 @@ function evaluate_detection_posseizure_negepoch(truth_bounds::Vector{<:Tuple}, d
     false_positives = 0
     true_negatives = 0
     false_negatives = 0
-    for (on, off) ∈ truth_bounds
+    gt_positive = 0
+    truth_bounds_plus_one_epoch = map(truth_bounds) do (on, off)
+        (max(on-epoch_s, minimum(detections_times)), min(off+epoch_s, maximum(detections_times)))
+    end
+    epoch_truth_bounds = discretize_and_merge_bounds(truth_bounds_plus_one_epoch, epoch_s)
+    for (on, off) ∈ epoch_truth_bounds
         interval_bin_idxs = find_containing_bins(on, off, detections_times)
-        interval_bins = @view detections[interval_bin_idxs]
-        if all(ismissing.(interval_bins))
+        if all(ismissing.(detections[interval_bin_idxs]))
             continue
         end
-        detected_seizure = any(skipmissing(interval_bins))
+        detected_seizure = any(skipmissing(detections[interval_bin_idxs]))
         true_positives += detected_seizure
         false_negatives += !detected_seizure
-        interval_bins .= missing # should exclude adjacent bins
+        detections[interval_bin_idxs] .= missing # should exclude adjacent bins
+        gt_positive += 1
     end
+    
     true_negatives = count(skipmissing(detections) .== false)
     false_positives = count(skipmissing(detections) .== true)
     return (
-        gt_positive = length(truth_bounds),
+        n_seizures = length(truth_bounds),
+        gt_positive = gt_positive,
         gt_negative = count(.!ismissing.(detections)),
         true_positives = true_positives,
         false_positives = false_positives,
@@ -54,27 +77,27 @@ function evaluate_detection_posseizure_negepoch(truth_bounds::Vector{<:Tuple}, d
     )
 end
 
-function add_grace_to_truth_bounds(truth_bounds, times, grace_s)
-    if isempty(truth_bounds)
-        return eltype(truth_bounds)[]
-    end
-    min_time = Int(minimum(times))
-    max_time = Int(maximum(times))
-    truth_bounds_with_grace_potentially_overlapping = [(max(min_time,on-grace_s),min(max_time,off+grace_s)) for (on,off) ∈ truth_bounds]
-    truth_bounds_with_grace = eltype(truth_bounds_with_grace_potentially_overlapping)[]
-    prev_bounds = first(truth_bounds_with_grace_potentially_overlapping)
-    for bounds ∈ truth_bounds_with_grace_potentially_overlapping[begin+1:end]
-        if prev_bounds[end] >= bounds[begin]
-            merged_bounds = (prev_bounds[begin], bounds[end])
-            prev_bounds = merged_bounds
-        else
-            push!(truth_bounds_with_grace, prev_bounds)
-            prev_bounds = bounds
-        end
-    end
-    push!(truth_bounds_with_grace, prev_bounds)
-    return truth_bounds_with_grace
-end
+# function add_grace_to_truth_bounds(truth_bounds, times, grace_s)
+#     if isempty(truth_bounds)
+#         return eltype(truth_bounds)[]
+#     end
+#     min_time = Int(minimum(times))
+#     max_time = Int(maximum(times))
+#     truth_bounds_with_grace_potentially_overlapping = [(max(min_time,on-grace_s),min(max_time,off+grace_s)) for (on,off) ∈ truth_bounds]
+#     truth_bounds_with_grace = eltype(truth_bounds_with_grace_potentially_overlapping)[]
+#     prev_bounds = first(truth_bounds_with_grace_potentially_overlapping)
+#     for bounds ∈ truth_bounds_with_grace_potentially_overlapping[begin+1:end]
+#         if prev_bounds[end] >= bounds[begin]
+#             merged_bounds = (prev_bounds[begin], bounds[end])
+#             prev_bounds = merged_bounds
+#         else
+#             push!(truth_bounds_with_grace, prev_bounds)
+#             prev_bounds = bounds
+#         end
+#     end
+#     push!(truth_bounds_with_grace, prev_bounds)
+#     return truth_bounds_with_grace
+# end
 
 # function evaluate_detection_posseizure_negalerts(truth_bounds::AbstractVector{<:Tuple}, detections::AbstractVector, detections_times; snippets_duration_s, alert_grace_s=60)
 #     # One positive per seizure, one negative per alert period
@@ -162,7 +185,7 @@ function motif0_weight_based_effect(df, effect_sym, n_nonzero, n_signals)
 end
 
 function calculate_threshold_range(arr)
-    extrema(skipmissing(arr))
+    extrema(skipmissing(arr)) .+ (-sqrt(eps()), sqrt(eps()))
 end
 
 function calculate_threshold_range(arrs::AbstractVector{<:AbstractArray})
@@ -177,15 +200,14 @@ function calculate_ROC(full_detection_fn::Function, θs)
     DataFrame(rocnums)
 end
 
-function calculate_ROC(raw_signals::AbstractArray, signal_times, truth_bounds, reduce_signals_fn::Function; epoch_s, snippets_duration_s, n_θs=100, processing_args...)
-    reduced_signal = reduce_signals_fn(raw_signals)
-    min_θ, max_θ = calculate_threshold_range(reduced_signal)
+function calculate_ROC(signal::AbstractVector, signal_times, truth_bounds; epoch_s, snippets_duration_s, n_θs=100, unused_args...)
+    min_θ, max_θ = calculate_threshold_range(signal)
     if !isfinite(min_θ)
         return nothing
     end
 
     function full_detection_fn(θ)
-        evaluate_detection_posseizure_negalerts(truth_bounds, reduced_signal .>= θ, signal_times; snippets_duration_s=snippets_duration_s, epoch_s=epoch_s)
+        evaluate_detection_posseizure_negepoch(truth_bounds, signal .>= θ, signal_times; snippets_duration_s=snippets_duration_s, epoch_s=epoch_s)
     end
 
     calculate_ROC(full_detection_fn, range(min_θ, max_θ, length=n_θs))
@@ -226,7 +248,7 @@ function reduce_signal_distance(raw_signals::NamedDimsArray; window_fn, rolling_
 end
 
 function reduce_signal_meanall(signals::NamedDimsArray)
-    return vec(mean(rolled_signal, dims=1))
+    return vec(mean(signals, dims=1))
 end
 
 function reduce_signal_meanallabs(signals::NamedDimsArray)
@@ -259,32 +281,36 @@ function plot_μ_and_σ_signals_and_roc(args...; resolution=(1300, 1000), kwargs
     return fig
 end
 
-function calc_non_seizure_hours(eeg, bounds)
-    (eeg.duration + mapreduce((x) -> x[1] - x[2], +, bounds, init=0)) / (60 * 60)
-end
+# function calc_non_seizure_hours(eeg, bounds)
+#     (eeg.duration + mapreduce((x) -> x[1] - x[2], +, bounds, init=0)) / (60 * 60)
+# end
 
-function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, snippets_duration_s, epoch_s, title, signals_reduction_name, unused_params...)
+function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, snippets_duration_s, epoch_s, title, signals_reduction_name, standard_mean=nothing, standard_std=nothing, unused_params...)
     reduce_signals_fn = get_reduce_signals_fn(signals_reduction_name)
 
     if !isempty(unused_params)
         @warn "Unused params: $unused_params"
     end
-    
-    seizures_with_grace_period = add_grace_to_truth_bounds(analysis_eeg.seizure_annotations, get_times(analysis_eeg, sample_rate=1/snippets_duration_s), epoch_s)
-    seizure_and_artifact_bounds = merge_bounds(seizures_with_grace_period, analysis_eeg.artifact_annotations)
-    non_seizure_hours = calc_non_seizure_hours(analysis_eeg, seizure_and_artifact_bounds)
-
-    @info "Calculating ROC curve..."
     signal_window_fns = Dict(
         "σ" => (signal_sym=:Δσ, window_fn=std),
         "μ" => (signal_sym=:Δμ, window_fn=mean)
     )
     map(enumerate(["μ", "σ"])) do (i, rolling_type)
         rolling_reduction_params = signal_window_fns[rolling_type]
-        reduced_signal = reduce_signals_fn(signals)
+        rolled_signals = roll_signals(signals; snippets_duration_s=snippets_duration_s, unused_params..., rolling_reduction_params...)
+        standardized_signals = if isnothing(standard_mean) && isnothing(standard_std)
+            not_missings = .!ismissing.(rolled_signals[1,:])
+            (rolled_signals .- mean(rolled_signals[:,not_missings], dims=:time)) ./ std(rolled_signals[:,not_missings], dims=:time)
+        elseif !isnothing(standard_mean) && !isnothing(standard_std)
+            (rolled_signals .- standard_mean) ./ standard_std
+        else
+            error("Need both or neither standard_mean and standard_std")
+        end
+        
+        reduced_signal = reduce_signals_fn(standardized_signals)
 
         fig[i,1:2] = ax = Axis(fig; ylabel = "$(signals_reduction_name) $(rolling_type)")
-        TriCorrApplications.plot_contribution!(ax, plot_eeg, signal_times, reduced_signal)
+        TriCorrApplications.plot_contribution!(ax, plot_eeg, signal_times, reduced_signal; epoch_s=epoch_s)
     end
     fig[3,1:2] = ax_rev = Axis(fig; ylabel = "# reviewers", xlabel = "time")
     TriCorrApplications.plot_reviewer_consensus!(ax_rev, plot_eeg)
@@ -293,18 +319,28 @@ function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bound
 
     map(enumerate(["μ", "σ"])) do (i, rolling_type)
         rolling_reduction_params = signal_window_fns[rolling_type]
-        roc_data = calculate_ROC(signals, signal_times, truth_bounds, 
-            reduce_signals_fn; 
+        rolled_signals = roll_signals(signals; snippets_duration_s=snippets_duration_s, unused_params..., rolling_reduction_params...)
+        standardized_signals = if isnothing(standard_mean) && isnothing(standard_std)
+            not_missings = .!ismissing.(rolled_signals[1,:])
+            (rolled_signals .- mean(rolled_signals[:,not_missings], dims=:time)) ./ std(rolled_signals[:,not_missings], dims=:time)
+        elseif !isnothing(standard_mean) && !isnothing(standard_std)
+            (rolled_signals .- standard_mean) ./ standard_std
+        else
+            error("Need both or neither standard_mean and standard_std")
+        end
+        
+        reduced_signal = reduce_signals_fn(standardized_signals)
+
+        roc_data = calculate_ROC(reduced_signal, signal_times, truth_bounds; 
             epoch_s=epoch_s, 
             snippets_duration_s=snippets_duration_s, 
             n_θs=100, 
             rolling_reduction_params...
         )
-        @info "done. Now plotting."
         
         if !isnothing(roc_data) && any(roc_data.gt_negative .!= 0) && any(roc_data.gt_positive .!= 0)
             plot_seizure_detection_ROC!(roc_column[i,1], roc_data;
-                non_seizure_hours=non_seizure_hours, 
+                epoch_s = epoch_s,
                 title="$(title) (Rolling $(rolling_type) of $(signals_reduction_name))"
             )
         else
@@ -314,19 +350,19 @@ function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bound
     return fig
 end
 
-function plot_seizure_detection_ROC!(layout, roc_df::DataFrame; non_seizure_hours, title, roc_plt = plot_NODRAW_seizure_detection_ROC!(roc_df, non_seizure_hours), unused_params...)
+function plot_seizure_detection_ROC!(layout, roc_df::DataFrame; epoch_s, title, roc_plt = plot_NODRAW_seizure_detection_ROC!(roc_df; epoch_s=epoch_s), unused_params...)
     roc_drw = draw!(layout, roc_plt, axis=(title=title, 
-    #limits=((0.,maximum(roc_df.gt_negative)/non_seizure_hours),(0.,1.))
+    limits=((0.,60.),(0.,1.))
     ))
 
     roc_drw
 end
 
 
-function plot_NODRAW_seizure_detection_ROC!(roc_df::DataFrame, non_seizure_hours; color=:blue)
+function plot_NODRAW_seizure_detection_ROC!(roc_df::DataFrame; epoch_s, color=:blue)
     data(roc_df) * mapping(
         (:false_positives,:gt_negative) => 
-            ((f, gt) -> f / non_seizure_hours) => 
+            ((f, gt) -> f / (gt * epoch_s / (60 * 60))) => 
             "FP/Hour", 
         (:true_positives,:gt_positive) => 
             ((t, gt) -> t / gt) => 
@@ -334,7 +370,7 @@ function plot_NODRAW_seizure_detection_ROC!(roc_df::DataFrame, non_seizure_hours
     ) * visual(Lines, color=color, linewidth=5)
 end
 
-function plot_NODRAW_seizure_detection_ROC_standard!(roc_df::DataFrame, non_seizure_hours; color=:blue)
+function plot_NODRAW_seizure_detection_ROC_standard!(roc_df::DataFrame; color=:blue)
     data(roc_df) * mapping(
         (:false_positives,:gt_negative) => 
             ((f, gt) -> f / gt) => 

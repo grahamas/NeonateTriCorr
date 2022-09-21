@@ -11,31 +11,6 @@ function calc_control_snippet_starts(eeg::AbstractProcessedEEG, snippets_duratio
     return vcat([on:snippets_duration_s:off for (on, off) ∈ control_bounds]...)
 end
 
-function merge_bounds(bounds1::AbstractVector{Tup}, bounds2::AbstractVector{Tup}) where {T,Tup<:Tuple{T,T}}
-    if isempty(bounds1) && isempty(bounds2)
-        return Tup[]
-    elseif isempty(bounds1)
-        return bounds2
-    elseif isempty(bounds2)
-        return bounds1
-    end
-    bounds = sort([bounds1..., bounds2...])
-    new_bounds = Tup[]
-
-    current_start, current_stop = first(bounds)
-    for (start, stop) in bounds[2:end]
-        if start <= current_stop
-            current_stop = max(stop, current_stop)
-        else
-            push!(new_bounds, (current_start, current_stop))
-            current_start = start; current_stop = stop
-        end
-    end
-    push!(new_bounds, (current_start, current_stop))
-
-    return new_bounds
-end
-
 
 function calc_control_bounds(eeg::AbstractProcessedEEG, snippets_duration_s, min_dist_to_seizure)
     non_control_bounds = merge_bounds(eeg.seizure_annotations, eeg.artifact_annotations)

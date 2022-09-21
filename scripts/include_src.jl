@@ -17,3 +17,5 @@ include(scriptsdir("meats/detect_all_patients_seizures.jl"))
 include(scriptsdir("meats/calculate_patient_tricorr.jl"))
 include(scriptsdir("meats/calculate_patient_aEEG.jl"))
 include(scriptsdir("meats/epoch_differences.jl"))
+
+include(scriptsdir("params/params.jl"))

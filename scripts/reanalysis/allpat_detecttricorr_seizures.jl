@@ -12,11 +12,7 @@ using KernelDensity
 
 include(scriptsdir("include_src.jl"))
 
-patients_all = 1:79
-patients_artifact_annotated = [1:15..., 19,31,44,47,50,62,75]
-patients_unannotated = setdiff(patients_all, patients_artifact_annotated) 
-
-tricorr_sig_times_bounds = let signal_type = "tricorr", signals_reduction_name = "maxanyabs",
+tricorr_sig_times_bounds = let signal_type = "tricorr", signals_reduction_name = "meanallabs",
     patients_considered = patients_all;
  
 params = Dict(
@@ -51,5 +47,5 @@ detect_all_patients_seizures(patients_considered; signal_type=signal_type, save_
 end
 
 # tricorr_results = mapreduce(add_nts, zip(tricorr_sig_times_bounds...)) do (signal, times, bounds)
-#     evaluate_detection_posseizure_negalerts(bounds, signal .> 1.0, times; snippets_duration_s=1, epoch_s=60)
+#     evaluate_detection_posseizure_negepoch(bounds, signal .> 1.0, times; snippets_duration_s=1, epoch_s=60)
 # end
