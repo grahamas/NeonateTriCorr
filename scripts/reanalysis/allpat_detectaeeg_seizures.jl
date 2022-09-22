@@ -21,7 +21,7 @@ aeeg_sig_times_bounds = let signal_type = "aEEG", signals_reduction_name = "maxa
 
 params = Dict(
     :min_reviewers_per_seizure => 3,
-    :excluded_artifact_grades => Int[1],
+    :excluded_artifact_grades => Int[],
     :min_dist_to_seizure => 30,
     :epoch_s => 60,
     :rolling_window_s => 60,

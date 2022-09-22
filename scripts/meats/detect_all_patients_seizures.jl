@@ -12,9 +12,11 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         snippets_duration_s, signal_from_dct_fn = get_signal_from_dct_fn(signal_type), 
         signals_reduction_name,
         epoch_s, n_θs, 
-        discretization_s,
+        discretization_s, 
+        standardization,
         task_name = "$(signal_type)$(signals_reduction_name)",
-        roc_resolution=(800,600), remaining_params...
+        roc_resolution=(800,600),
+        remaining_params...
     )
     reduce_signals_fn = get_reduce_signals_fn(signals_reduction_name)
 
@@ -68,15 +70,27 @@ function detect_all_patients_seizures(patients_considered; signal_type,
 
     rolled_signals = roll_signals.(signals; snippets_duration_s=snippets_duration_s, remaining_params...)
 
-    cat_signals = cat(rolled_signals..., dims=:time)
-    cat_not_missings = .!ismissing.(cat_signals[1,:])
-    signal_means = mean(cat_signals[:,cat_not_missings], dims=:time)
-    signal_stds = std(cat_signals[:,cat_not_missings], dims=:time)
 
-    for idx ∈ eachindex(rolled_signals)
-        rolled_signals[idx] .-= signal_means
-        rolled_signals[idx] ./= signal_stds
+    if standardization == "within"
+        for idx ∈ eachindex(rolled_signals)
+            not_missings = .!ismissing.(rolled_signals[idx][1,:])
+            rolled_signals[idx] .-= mean(rolled_signals[idx][:, not_missings], dims=:time)
+            rolled_signals[idx] ./= std(rolled_signals[idx][:, not_missings], dims=:time)
+        end
+    elseif standardization == "across"
+        cat_signals = cat(rolled_signals..., dims=:time)
+        cat_not_missings = .!ismissing.(cat_signals[1,:])
+        signal_means = mean(cat_signals[:,cat_not_missings], dims=:time)
+        signal_stds = std(cat_signals[:,cat_not_missings], dims=:time)
+
+        for idx ∈ eachindex(rolled_signals)
+            rolled_signals[idx] .-= signal_means
+            rolled_signals[idx] ./= signal_stds
+        end
+    else
+        error("What's \"$standardization\" standardization?")
     end
+
 
     reduced_signals = reduce_signals_fn.(rolled_signals)
 
@@ -117,6 +131,7 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         signal_from_dct_fn=signal_from_dct_fn, 
         signals_reduction_name=signals_reduction_name, 
         non_seizure_hours=non_seizure_hours,
+        standardization=standardization,
         epoch_s=epoch_s, n_θs=n_θs, remaining_params...
     )
 
@@ -137,24 +152,22 @@ function detect_all_patients_seizures(patients_considered; signal_type,
 
     # # Step 3: Calculate and plot ROC for every standardized patient
 
-    for (patient_num, eeg, signal, times, bounds) ∈ zip(patients_considered, eegs, signals, signal_times, seizure_bounds)
-        fig = plot_μ_and_σ_signals_and_roc(signal, times, bounds; analysis_eeg=eeg, epoch_s=epoch_s, snippets_duration_s=snippets_duration_s, 
-        signals_reduction_name=signals_reduction_name, title="Patient $(patient_num) (within standardized)", remaining_params...)
+    # for (patient_num, eeg, signal, times, bounds) ∈ zip(patients_considered, eegs, signals, signal_times, seizure_bounds)
+    #     fig = plot_μ_and_σ_signals_and_roc(signal, times, bounds; analysis_eeg=eeg, epoch_s=epoch_s, snippets_duration_s=snippets_duration_s, 
+    #     signals_reduction_name=signals_reduction_name, title="Patient $(patient_num) (within standardized)", remaining_params...)
 
-        save(joinpath(save_dir, "$(task_name)_roc_patient$(patient_num)_nrev$(min_reviewers_per_seizure).png"), fig)
-    end
+    #     save(joinpath(save_dir, "$(task_name)_roc_patient$(patient_num)_nrev$(min_reviewers_per_seizure).png"), fig)
+    # end
 
     return all_patient_ROC_df
 end
 
 function evaluate_clinician_FPR(patients_considered; 
     excluded_artifact_grades,
-    epoch_s, remaining_params...
+    epoch_s, discretization_s, remaining_params...
 )
-
-    non_seizure_hours = 0
     eegs_and_results = map(patients_considered) do patient_num
-        eeg = load_helsinki_eeg(patient_num; min_reviewers_per_seizure = 3, excluded_artifact_grades=excluded_artifact_grades)
+        eeg = load_helsinki_eeg(patient_num; min_reviewers_per_seizure = 3, excluded_artifact_grades=excluded_artifact_grades, discretization_s=15)
         truth_bounds, _ = load_helsinki_seizure_annotations(patient_num; 
             min_reviewers_per_seizure=3, discretization_s=discretization_s
         )
@@ -164,7 +177,7 @@ function evaluate_clinician_FPR(patients_considered;
         times = get_times(eeg, sample_rate=1.)
         detections = zeros(Bool, size(times))
         for (sr,sp) ∈ any_clinician_bounds
-            detections[sr:sp] .= true
+            detections[sr .<= times .< sp] .= true
         end
         results = evaluate_detection_posseizure_negepoch(truth_bounds, detections, times; snippets_duration_s=1, epoch_s=epoch_s)
         return (eeg, results)

@@ -12,24 +12,31 @@ using KernelDensity
 
 include(scriptsdir("include_src.jl"))
 
-let all_analyses_path = plotsdir("all_analyses_$(Dates.now())");
+let all_analyses_path = plotsdir("all_analyses_IntraStd_$(Dates.now())");
 mkpath(all_analyses_path)
 
 
 for signal_type ∈ ["tricorr", "aEEG"], 
-    signals_reduction_name ∈ [raw"meanall", "maxany"], 
-    artifacts_excluded ∈ [Int[], [1]], 
-    reviewer_consensus ∈ 1:3
+    signals_reduction_name ∈ ["meanall", "maxany"], 
+    excluded_artifact_grades ∈ [Int[], [1]], 
+    min_reviewers_per_seizure ∈ 1:3
 
     if signal_type == "tricorr"
         signals_reduction_name = "$(signals_reduction_name)abs"
     end
 
-    patient_sets = if isempty(artifacts_excluded)
+    patient_sets = if isempty(excluded_artifact_grades)
         [patients_all, patients_artifact_annotated]
     else
         [patients_artifact_annotated]
     end
+
+    params = merge(common_params, analysis_particular_params[signal_type], 
+        Dict(
+            :excluded_artifact_grades => excluded_artifact_grades,
+            :min_reviewers_per_seizure => min_reviewers_per_seizure
+        )
+    )
 
     detect_stem = make_detection_stem(signal_type, signals_reduction_name;
         params...
@@ -37,9 +44,12 @@ for signal_type ∈ ["tricorr", "aEEG"],
     save_dir = joinpath(all_analyses_path, "$(detect_stem)$(Dates.now())")
     mkpath(save_dir)
 
-    detect_all_patients_seizures(patients_considered; 
-        signal_type=signal_type, save_dir=save_dir, params...,
-        signals_reduction_name=signals_reduction_name
-    )
+    for patients_considered ∈ patient_sets
+        detect_all_patients_seizures(patients_considered; 
+            signal_type=signal_type, save_dir=save_dir, params...,
+            signals_reduction_name=signals_reduction_name
+        )
+    end
 end
 
+end

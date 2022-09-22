@@ -5,7 +5,7 @@ using DrWatson
 ## Excludes seconds marked as artifactual by
 
 using EDF, DSP, Statistics, StatsBase, CairoMakie, AlgebraOfGraphics
-ext = "png"
+ext = "svg"
 using Random, JLD2
 using LinearAlgebra
 using KernelDensity
@@ -16,48 +16,26 @@ patients_all = 1:79
 patients_artifact_annotated = [1:15..., 19,31,44,47,50,62,75]
 patients_unannotated = setdiff(patients_all, patients_artifact_annotated) 
 
-let signals_reduction_name = "meanall",
+let aEEG_signals_reduction_name = "maxany",
+    tricorr_signals_reduction_name = "$(aEEG_signals_reduction_name)abs",
     patients_considered = patients_all,
+    standardization="within",
     resolution=(800,600);
 
-base_params = Dict(
-    :min_reviewers_per_seizure => 3,
-    :excluded_artifact_grades => Int[],
-    :min_dist_to_seizure => 30,
-    :epoch_s => 60,
-    :rolling_window_s => 60,
-    :rolling_window_s => 60,
-    :window_fn => mean,
-    :n_θs => 100
-)
+aEEG_params = merge(common_params, analysis_particular_params["aEEG"], Dict(:standardization => standardization))
+tricorr_params = merge(common_params, analysis_particular_params["tricorr"], Dict(:standardization => standardization))
 
-tricorr_params = Dict(base_params..., 
-    :preproc! => TripleCorrelations.zscore!, 
-    :postproc! => TripleCorrelations.identity!,
-    :assumption => IndStdNormal(), :conditioned_on => None(),
-    :snippets_duration_s => 1,
-    :lag_extents => (8,25)
-)
-aEEG_params = Dict(base_params..., 
-    :lowpass_freq => 0.31,
-    :snippets_duration_s => 15,
-    :lower_margin_perc => 0.09,
-    :upper_margin_perc => 0.93,
-    :min_snippets_for_comparison => 15
-)
-
-tricorr_ROC_df, loaded_tricorr_params = load_or_calculate_multipatient_ROC_df(patients_considered, "tricorr", signals_reduction_name; tricorr_params...)
-aEEG_ROC_df, loaded_aEEG_params = load_or_calculate_multipatient_ROC_df(patients_considered, "aEEG", signals_reduction_name; aEEG_params...)
+tricorr_ROC_df, loaded_tricorr_params = load_or_calculate_multipatient_ROC_df(patients_considered, "tricorr", tricorr_signals_reduction_name; tricorr_params...)
+aEEG_ROC_df, loaded_aEEG_params = load_or_calculate_multipatient_ROC_df(patients_considered, "aEEG", aEEG_signals_reduction_name; aEEG_params...)
 
 fig = Figure(resolution=resolution)
 
 tricorr_color = :blue
 aEEG_color = :red
-combined_plt = plot_NODRAW_seizure_detection_ROC_standard!(tricorr_ROC_df, NamedTuple(loaded_tricorr_params).non_seizure_hours, color=tricorr_color) + plot_NODRAW_seizure_detection_ROC_standard!(aEEG_ROC_df, NamedTuple(loaded_aEEG_params).non_seizure_hours, color=aEEG_color)
+combined_plt = plot_NODRAW_seizure_detection_ROC!(tricorr_ROC_df, color=tricorr_color, epoch_s=aEEG_params[:epoch_s]) + plot_NODRAW_seizure_detection_ROC!(aEEG_ROC_df, color=aEEG_color, epoch_s=tricorr_params[:epoch_s])
 
-plot_seizure_detection_ROC!(fig[1,1], DataFrame(); non_seizure_hours=NaN,title="Combined tricorr ($(string(tricorr_color))) and aEEG ($(string(aEEG_color))) ROC", roc_plt = combined_plt)
-
-save(plotsdir("combined_aEEG_tricorr_patients$(length(patients_considered))_$(signals_reduction_name)_ROCs_STANDARD_$(Dates.now()).png"), fig)
+plot_seizure_detection_ROC!(fig[1,1], DataFrame(); title="Tricorr ($(string(tricorr_color))) vs aEEG ($(string(aEEG_color))) ROC $(standardization)-patient standardized", roc_plt = combined_plt)
+save(plotsdir("combined_aEEG_tricorr_$(standardization)_patients$(length(patients_considered))_$(aEEG_signals_reduction_name)_ROCs_$(Dates.now()).$(ext)"), fig)
 
 return fig
 

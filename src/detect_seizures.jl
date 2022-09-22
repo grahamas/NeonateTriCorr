@@ -285,7 +285,7 @@ end
 #     (eeg.duration + mapreduce((x) -> x[1] - x[2], +, bounds, init=0)) / (60 * 60)
 # end
 
-function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, snippets_duration_s, epoch_s, title, signals_reduction_name, standard_mean=nothing, standard_std=nothing, unused_params...)
+function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bounds; analysis_eeg, plot_eeg=analysis_eeg, snippets_duration_s, epoch_s::Number, title, signals_reduction_name, standard_mean=nothing, standard_std=nothing, unused_params...)
     reduce_signals_fn = get_reduce_signals_fn(signals_reduction_name)
 
     if !isempty(unused_params)
@@ -350,7 +350,7 @@ function plot_μ_and_σ_signals_and_roc!(fig, signals, signal_times, truth_bound
     return fig
 end
 
-function plot_seizure_detection_ROC!(layout, roc_df::DataFrame; epoch_s, title, roc_plt = plot_NODRAW_seizure_detection_ROC!(roc_df; epoch_s=epoch_s), unused_params...)
+function plot_seizure_detection_ROC!(layout, roc_df::DataFrame; epoch_s=nothing, title, roc_plt = plot_NODRAW_seizure_detection_ROC!(roc_df; epoch_s=epoch_s), unused_params...)
     roc_drw = draw!(layout, roc_plt, axis=(title=title, 
     limits=((0.,60.),(0.,1.))
     ))

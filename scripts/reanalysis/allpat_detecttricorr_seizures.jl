@@ -13,7 +13,7 @@ using KernelDensity
 include(scriptsdir("include_src.jl"))
 
 tricorr_sig_times_bounds = let signal_type = "tricorr", signals_reduction_name = "meanallabs",
-    patients_considered = patients_all;
+    patients_considered = patients_artifact_annotated;
  
 params = Dict(
     :preproc! => TripleCorrelations.zscore!, 

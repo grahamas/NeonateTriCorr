@@ -39,9 +39,9 @@ function make_signal_stem(signal_type; params...)
     end
 end
 
-function make_epochdiff_stem(signal_type; min_reviewers_per_seizure, min_dist_to_seizure, params...)
+function make_epochdiff_stem(signal_type; min_reviewers_per_seizure, standardization, params...)
     signal_stem = make_signal_stem(signal_type; params...)
-    "epochdiff$(signal_stem)nrev$(min_reviewers_per_seizure)_szdist$(min_dist_to_seizure)_"
+    "epochdiff$(signal_stem)nrev$(min_reviewers_per_seizure)_std$(standardization)_"
 end
 
 function make_detection_stem(signal_type, reduction_type; epoch_s,  params...)
