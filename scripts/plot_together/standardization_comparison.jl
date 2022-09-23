@@ -15,7 +15,7 @@ include(scriptsdir("include_src.jl"))
 let aEEG_signals_reduction_name = "maxany",
     tricorr_signals_reduction_name = "$(aEEG_signals_reduction_name)abs",
     patients_considered = patients_all,
-    resolution=(1600,600);
+    resolution=(1200,800);
 
 aEEG_params = merge(common_params, analysis_particular_params["aEEG"])
 tricorr_params = merge(common_params, analysis_particular_params["tricorr"])
@@ -57,7 +57,15 @@ plt = data(all_ROC_df) * mapping(
     color=:signal, col=:standardization
 ) * visual(Lines, linewidth=5)
 
-fig = draw(plt, axis=(limits=((0.,60.),(0.,1.)),))
+fig = Figure(resolution=resolution)
+drw = draw!(fig, plt; 
+    axis=(limits=((0.,60.),(0.,1.)),)
+)
+leg = AlgebraOfGraphics.compute_legend(drw)
+right_ax = content(fig[1,2])
+hidedecorations!(right_ax; label = false, ticklabels = false, ticks = false, grid = true)
+hidedecorations!(content(fig[1,1]); label = false, ticklabels = false, ticks = false, grid = true)
+axislegend(right_ax, leg...; halign=:right, valign=:bottom)
 
 save(plotsdir("compare_aEEG_tricorr_standardizations_patients$(length(patients_considered))_$(aEEG_signals_reduction_name)_ROCs_$(Dates.now()).$(ext)"), fig)
 

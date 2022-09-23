@@ -1,7 +1,7 @@
 
 using TriCorrApplications
 function TriCorrApplications.plot_reviewer_consensus!(ax, eeg::AbstractProcessedEEG)
-    lines!(ax, get_times(eeg, sample_rate=1), eeg.seizure_reviewers_count)
+    lines!(ax, get_times(eeg, sample_rate=1), eeg.seizure_reviewers_count, color=:grey11)
     tightlimits!(ax); hidespines!(ax)
     ylims!(ax, (0, 3))
     hidedecorations!(ax, ticklabels=false)

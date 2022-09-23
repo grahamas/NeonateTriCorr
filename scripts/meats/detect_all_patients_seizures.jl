@@ -6,6 +6,15 @@ function add_nts(nt1::NT, nt2::NT) where {L, NT <: NamedTuple{L}}
     )
 end
 
+function load_signal(; discretization_s, snippets_duration_s, signal_type, signal_from_dct_fn = get_signal_from_dct_fn(signal_type), params...)
+    target_match_str = make_signal_stem(signal_type; snippets_duration_s=snippets_duration_s, params...)
+    maybe_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
+    @assert !isnothing(maybe_dict) "No data like $target_match_str"
+    sig = signal_from_dct_fn(maybe_dict)
+    discretize_missings!(sig, discretization_s ÷ snippets_duration_s)
+    sig
+end
+
 function detect_all_patients_seizures(patients_considered; signal_type, 
         save_dir,
         excluded_artifact_grades, min_reviewers_per_seizure, 
@@ -23,18 +32,16 @@ function detect_all_patients_seizures(patients_considered; signal_type,
     # Step 1: Standardize signals across all patients
 
     signals = map(patients_considered) do patient_num
-        target_match_str = make_signal_stem(signal_type; 
+        load_signal(;
+            signal_type = signal_type,
             excluded_artifact_grades=excluded_artifact_grades,
             min_reviewers_per_seizure=min_reviewers_per_seizure,
             snippets_duration_s=snippets_duration_s,
             patient_num=patient_num,
+            discretization_s=discretization_s,
+            epoch_s=epoch_s,
             remaining_params...
         )
-        maybe_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
-        @assert !isnothing(maybe_dict) "No data like $target_match_str"
-        sig = signal_from_dct_fn(maybe_dict)
-        discretize_missings!(sig, discretization_s ÷ snippets_duration_s)
-        sig
     end
 
     # need to validate that all signals are in same order
