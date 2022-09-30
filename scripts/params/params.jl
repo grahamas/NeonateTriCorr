@@ -12,19 +12,24 @@ common_params = Dict(
     :rolling_window_s => 60,
     :window_fn => mean,
     :n_θs => 100,
-    :discretization_s => 15
+    :discretization_s => 15,
+    :standardization => "within",
+    :min_snippets_for_comparison => 20,
+    :evaluation_fn => evaluate_detection_pospatient_negpatientepoch
 )
 
 analysis_particular_params = Dict(
     "tricorr" => Dict(
         :preproc! => TripleCorrelations.zscore!, 
         :postproc! => TripleCorrelations.identity!,
-        :assumption => IndStdNormal(), :conditioned_on => None()
+        :assumption => IndStdNormal(), :conditioned_on => None(),
+        :signal_type => "tricorr"
     ),
     "aEEG" => Dict(
         :lowpass_freq => 0.31,
         :snippets_duration_s => 15,
         :lower_margin_perc => 0.09,
-        :upper_margin_perc => 0.93
+        :upper_margin_perc => 0.93,
+        :signal_type => "aEEG"
     )
 )

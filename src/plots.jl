@@ -48,7 +48,7 @@ function significance_category(x, n_comparisons)
     end
 end
 
-function draw_significances_plot!(df; all_channel_labels, draw_kwargs...)
+function draw_significances_plot!(df; all_channel_labels, axis=(;), draw_kwargs...)
     n_channels = length(all_channel_labels)
     summary = combine(groupby(df, :channel), :Δμ => std, :Δσ => std, :Δμ => mean, :Δσ => mean)
     @show summary
@@ -66,21 +66,66 @@ function draw_significances_plot!(df; all_channel_labels, draw_kwargs...)
     end
     transform!(df, [:Δμ, :channel] => normed_Δμ => :Δμ_z, [:Δσ, :channel] => normed_Δσ => :Δσ_z)
 
+    reverse_y_scale = y -> (10 ^ (-(10^y)))
     df.significance = significance_category.(df.p, n_channels)
     sig_categories = ([0.1, 0.04, 0.02, 0.002, 0.0002, 0.00002] ./ n_channels) .|> Base.Fix2(significance_category, n_channels)
     colors = cgrad(:sunset, length(sig_categories), categorical=true)
-    plt = data(df) * mapping(:patient => nonnumeric, :channel => sorter(all_channel_labels), color=:significance => sorter(sig_categories) => "significance") * visual(markersize=30)
+    plt = data(df) * mapping(:channel => sorter(all_channel_labels), :p => (log10 ∘ abs ∘ log10), layout=(:patient => nonnumeric)) * visual(markersize=15)
     return draw(plt; palettes=(color=colors,), draw_kwargs...)
 end
 
+# function draw_significances_plot!(df; all_channel_labels, draw_kwargs...)
+#     n_channels = length(all_channel_labels)
+#     summary = combine(groupby(df, :channel), :Δμ => std, :Δσ => std, :Δμ => mean, :Δσ => mean)
+#     @show summary
+#     function normed_Δμ(xs, channels)
+#         map(zip(xs, channels)) do (x, channel)
+#             σ = only(filter(:channel => ==(channel), summary).Δμ_std)
+#             return x / σ
+#         end
+#     end
+#     function normed_Δσ(xs, channels)
+#         map(zip(xs, channels)) do (x, channel)
+#             σ = only(filter(:channel => ==(channel), summary).Δσ_std)
+#             return x / σ
+#         end
+#     end
+#     transform!(df, [:Δμ, :channel] => normed_Δμ => :Δμ_z, [:Δσ, :channel] => normed_Δσ => :Δσ_z)
+
+#     df.significance = significance_category.(df.p, n_channels)
+#     sig_categories = ([0.1, 0.04, 0.02, 0.002, 0.0002, 0.00002] ./ n_channels) .|> Base.Fix2(significance_category, n_channels)
+#     colors = cgrad(:sunset, length(sig_categories), categorical=true)
+#     plt = data(df) * mapping(:patient => nonnumeric, :channel => sorter(all_channel_labels), color=:significance => sorter(sig_categories) => "significance") * visual(markersize=30)
+#     return draw(plt; palettes=(color=colors,), draw_kwargs...)
+# end
+
+# function draw_Δμ_plot(df; all_channel_labels, draw_kwargs...)
+#     max_Δμ = maximum(abs.(extrema(df.Δμ_z)))
+#     plt = data(df) * mapping(:patient => nonnumeric, :channel => sorter(all_channel_labels),  color=:Δμ_z) * visual(markersize=30, colormap=:bluesreds, colorrange=(-max_Δμ,max_Δμ))
+#     return draw(plt; draw_kwargs...)
+# end
+
+# function draw_Δσ_plot(df; all_channel_labels, draw_kwargs...)
+#     max_Δσ = maximum(abs.(extrema(df.Δσ_z)))
+#     plt = data(df) * mapping(:patient => nonnumeric, :channel => sorter(all_channel_labels),  color=:Δσ_z) * visual(markersize=30, colormap=:bluesreds, colorrange=(-max_Δσ,max_Δσ))
+#     return draw(plt; draw_kwargs...)
+# end
+
 function draw_Δμ_plot(df; all_channel_labels, draw_kwargs...)
+    n_channels = length(all_channel_labels)
+    sig_categories = ([0.1, 0.04, 0.02, 0.002, 0.0002, 0.00002] ./ n_channels) .|> Base.Fix2(significance_category, n_channels)
+    colors = cgrad(:sunset, length(sig_categories), categorical=true)
     max_Δμ = maximum(abs.(extrema(df.Δμ_z)))
-    plt = data(df) * mapping(:patient => nonnumeric, :channel => sorter(all_channel_labels),  color=:Δμ_z) * visual(markersize=30, colormap=:bluesreds, colorrange=(-max_Δμ,max_Δμ))
-    return draw(plt; draw_kwargs...)
+    plt = data(df) * mapping(:channel => sorter(all_channel_labels), :Δμ_z 
+=> "Δμ z-score", layout= :patient => nonnumeric, color=:significance => sorter(sig_categories) => "significance") * visual(Stem, markersize=15)
+    return draw(plt; palettes=(color=colors,), legend=(markersize=15,), draw_kwargs...)
 end
 
 function draw_Δσ_plot(df; all_channel_labels, draw_kwargs...)
+    n_channels = length(all_channel_labels)
+    sig_categories = ([0.1, 0.04, 0.02, 0.002, 0.0002, 0.00002] ./ n_channels) .|> Base.Fix2(significance_category, n_channels)
+    colors = cgrad(:sunset, length(sig_categories), categorical=true)
     max_Δσ = maximum(abs.(extrema(df.Δσ_z)))
-    plt = data(df) * mapping(:patient => nonnumeric, :channel => sorter(all_channel_labels),  color=:Δσ_z) * visual(markersize=30, colormap=:bluesreds, colorrange=(-max_Δσ,max_Δσ))
-    return draw(plt; draw_kwargs...)
+    plt = data(df) * mapping(:channel => sorter(all_channel_labels), :Δσ_z => "Δσ z-score", layout= :patient => nonnumeric, color=:significance => sorter(sig_categories) => "significance") * visual(Stem, markersize=15)
+    return draw(plt; palettes=(color=colors,), legend=(markersize=15,), draw_kwargs...)
 end

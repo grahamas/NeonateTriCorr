@@ -21,10 +21,10 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         snippets_duration_s, signal_from_dct_fn = get_signal_from_dct_fn(signal_type), 
         signals_reduction_name,
         epoch_s, n_θs, 
-        discretization_s, 
-        standardization,
+        discretization_s,
         task_name = "$(signal_type)$(signals_reduction_name)",
         roc_resolution=(800,600),
+        evaluation_fn = evaluate_detection_posseizure_negepoch,
         remaining_params...
     )
     reduce_signals_fn = get_reduce_signals_fn(signals_reduction_name)
@@ -77,27 +77,7 @@ function detect_all_patients_seizures(patients_considered; signal_type,
 
     rolled_signals = roll_signals.(signals; snippets_duration_s=snippets_duration_s, remaining_params...)
 
-
-    if standardization == "within"
-        for idx ∈ eachindex(rolled_signals)
-            not_missings = .!ismissing.(rolled_signals[idx][1,:])
-            rolled_signals[idx] .-= mean(rolled_signals[idx][:, not_missings], dims=:time)
-            rolled_signals[idx] ./= std(rolled_signals[idx][:, not_missings], dims=:time)
-        end
-    elseif standardization == "across"
-        cat_signals = cat(rolled_signals..., dims=:time)
-        cat_not_missings = .!ismissing.(cat_signals[1,:])
-        signal_means = mean(cat_signals[:,cat_not_missings], dims=:time)
-        signal_stds = std(cat_signals[:,cat_not_missings], dims=:time)
-
-        for idx ∈ eachindex(rolled_signals)
-            rolled_signals[idx] .-= signal_means
-            rolled_signals[idx] ./= signal_stds
-        end
-    else
-        error("What's \"$standardization\" standardization?")
-    end
-
+    standardize_signals!(rolled_signals; remaining_params...)
 
     reduced_signals = reduce_signals_fn.(rolled_signals)
 
@@ -114,7 +94,7 @@ function detect_all_patients_seizures(patients_considered; signal_type,
             false_positives_clean=0
         )
         for (signal, bounds, times) in zip(reduced_signals, seizure_bounds, signal_times)
-            single_patient_roc_vals = evaluate_detection_posseizure_negepoch(bounds, signal .>= θ, times; snippets_duration_s=snippets_duration_s, epoch_s=epoch_s)
+            single_patient_roc_vals = evaluation_fn(bounds, signal .>= θ, times; snippets_duration_s=snippets_duration_s, epoch_s=epoch_s)
             if isempty(bounds)
                 clean_negatives = add_nts(clean_negatives, (
                     gt_negative_clean=single_patient_roc_vals.gt_negative,
@@ -138,7 +118,7 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         signal_from_dct_fn=signal_from_dct_fn, 
         signals_reduction_name=signals_reduction_name, 
         non_seizure_hours=non_seizure_hours,
-        standardization=standardization,
+        evaluation_fn=evaluation_fn,
         epoch_s=epoch_s, n_θs=n_θs, remaining_params...
     )
 

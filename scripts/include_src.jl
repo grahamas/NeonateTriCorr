@@ -1,5 +1,5 @@
 
-using ProgressMeter
+using ProgressMeter, JLD2
 
 include(srcdir("types.jl"))
 include(srcdir("load.jl"))

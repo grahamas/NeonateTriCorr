@@ -1,3 +1,5 @@
+using KernelDensity, Distances, HypothesisTests
+
 function calc_seizure_snippet_starts(eeg::AbstractProcessedEEG, snippets_duration_s)
     calc_seizure_snippet_starts(eeg.seizure_annotations, snippets_duration_s)
 end
@@ -12,13 +14,14 @@ function calc_control_snippet_starts(eeg::AbstractProcessedEEG, snippets_duratio
 end
 
 
-function calc_control_bounds(eeg::AbstractProcessedEEG, snippets_duration_s, min_dist_to_seizure)
-    non_control_bounds = merge_bounds(eeg.seizure_annotations, eeg.artifact_annotations)
-    control_onsets = [0, first.(non_control_bounds)...]
-    control_offsets = [last.(non_control_bounds)..., eeg.duration]
-    control_bounds = zip(control_onsets, control_offsets)
-    @show control_bounds
-    return [(on+min_dist_to_seizure, off-min_dist_to_seizure) for (on, off) ∈ control_bounds if (off-min_dist_to_seizure)-(on+min_dist_to_seizure) > snippets_duration_s]
+function invert_bounds(bounds, start, stop)
+    inverted_onsets = [start, last.(bounds)...]
+    inverted_offsets = [first.(bounds)..., stop]
+    inverted_bounds = zip(inverted_onsets, inverted_offsets)
+    return collect(filter(inverted_bounds |> collect) do x
+        x[2] - x[1] > 0
+    end
+    )
 end
 
 function calc_control_snippets_incl_artifacts(seizure_annotations, recording_duration, signal_times, min_dist_to_seizure)

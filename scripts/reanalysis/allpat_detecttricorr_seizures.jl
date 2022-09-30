@@ -12,24 +12,10 @@ using KernelDensity
 
 include(scriptsdir("include_src.jl"))
 
-tricorr_sig_times_bounds = let signal_type = "tricorr", signals_reduction_name = "meanallabs",
-    patients_considered = patients_artifact_annotated;
+tricorr_sig_times_bounds = let signal_type = "tricorr", signals_reduction_name = "maxany",
+    patients_considered = patients_all;
  
-params = Dict(
-    :preproc! => TripleCorrelations.zscore!, 
-    :postproc! => TripleCorrelations.identity!,
-    :assumption => IndStdNormal(), :conditioned_on => None(),
-    :lag_extents => (8,25),
-    :min_reviewers_per_seizure => 3,
-    :excluded_artifact_grades => Int[],
-    :min_dist_to_seizure => 30,
-    :epoch_s => 60,
-    :snippets_duration_s => 1,
-    :rolling_window_s => 60,
-    :window_fn => mean,
-    :n_θs => 100,
-    :discretization_s => 15
-)
+params = merge(common_params, analysis_particular_params["tricorr"])
 
 # epochdiff_stem = make_epochdiff_stem(signal_type; params...)
 # maybe_dict = load_most_recent_jld2(epocwhdiff_stem, datadir())

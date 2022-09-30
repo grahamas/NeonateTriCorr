@@ -37,6 +37,141 @@ function calculate_negepoch_non_seizure_hours(bounds, times, epoch_s, snippet_s)
     return (length(coarse_times) - seizure_epochs) * epoch_s / (60 * 60)
 end
 
+function epochize_bounds(truth_bounds, start, stop; epoch_s, unused...)
+    truth_bounds_plus_one_epoch = map(truth_bounds) do (on, off)
+        (max(on-epoch_s, start), min(off+epoch_s, stop))
+    end
+    epoch_truth_bounds = discretize_and_merge_bounds(truth_bounds_plus_one_epoch, epoch_s)
+    return epoch_truth_bounds
+end
+
+
+function evaluate_detection_pospatient_negepoch(truth_bounds::Vector{<:Tuple}, detections::AbstractVector, detections_times; epoch_s, snippets_duration_s)
+    # One positive per seizure, one negative per non-seizure epoch
+    epoch_bin_len = epoch_s ÷ snippets_duration_s
+    @assert epoch_bin_len * snippets_duration_s == epoch_s
+    detections = coarse_grain_binary_signal(detections, epoch_bin_len)
+    detections_times = detections_times[begin:epoch_bin_len:end]
+    true_positives = 0
+    false_positives = 0
+    true_negatives = 0
+    false_negatives = 0
+    gt_positive = 0
+    n_seizures = 0
+    epoch_truth_bounds = epochize_bounds(truth_bounds, first(detections_times), last(detections_times); epoch_s=epoch_s)
+    for (on, off) ∈ epoch_truth_bounds
+        interval_bin_idxs = find_containing_bins(on, off, detections_times)
+        if all(ismissing.(detections[interval_bin_idxs]))
+            continue
+        end
+        detected_seizure = any(skipmissing(detections[interval_bin_idxs]))
+        n_seizures += 1
+        true_positives += detected_seizure
+        false_negatives += !detected_seizure
+        detections[interval_bin_idxs] .= missing # should exclude adjacent bins
+        gt_positive += 1
+    end
+    true_negatives = count(skipmissing(detections) .== false)
+    false_positives = count(skipmissing(detections) .== true)
+    if true_positives >= 1
+        return (
+            n_seizures = length(truth_bounds),
+            gt_positive = 1,
+            gt_negative = false_positives + true_negatives,
+            true_positives = 1,
+            false_positives = false_positives,
+            true_negatives = true_negatives,
+            false_negatives = 0
+        )
+    elseif false_negatives >= 1
+        return (
+                n_seizures = length(truth_bounds),
+                gt_positive = 1,
+                gt_negative = false_positives + true_negatives,
+                true_positives = 0,
+                false_positives = false_positives,
+                true_negatives = true_negatives,
+                false_negatives = 1
+            )
+    end
+    
+    true_negatives = count(skipmissing(detections) .== false)
+    false_positives = count(skipmissing(detections) .== true)
+    @assert gt_positive == 0
+    return (
+        n_seizures = length(truth_bounds),
+        gt_positive = gt_positive,
+        gt_negative = count(.!ismissing.(detections)),
+        true_positives = true_positives,
+        false_positives = false_positives,
+        true_negatives = true_negatives,
+        false_negatives = false_negatives
+    )
+end
+
+function evaluate_detection_pospatient_negpatientepoch(truth_bounds::Vector{<:Tuple}, detections::AbstractVector, detections_times; epoch_s, snippets_duration_s)
+    # One positive per seizure, one negative per non-seizure epoch
+    epoch_bin_len = epoch_s ÷ snippets_duration_s
+    @assert epoch_bin_len * snippets_duration_s == epoch_s
+    detections = coarse_grain_binary_signal(detections, epoch_bin_len)
+    detections_times = detections_times[begin:epoch_bin_len:end]
+    true_positives = 0
+    false_positives = 0
+    true_negatives = 0
+    false_negatives = 0
+    gt_positive = 0
+    n_seizures = 0
+    epoch_truth_bounds = epochize_bounds(truth_bounds, first(detections_times), last(detections_times); epoch_s=epoch_s)
+    for (on, off) ∈ epoch_truth_bounds
+        interval_bin_idxs = find_containing_bins(on, off, detections_times)
+        if all(ismissing.(detections[interval_bin_idxs]))
+            continue
+        end
+        detected_seizure = any(skipmissing(detections[interval_bin_idxs]))
+        n_seizures += 1
+        true_positives += detected_seizure
+        false_negatives += !detected_seizure
+        detections[interval_bin_idxs] .= missing # should exclude adjacent bins
+        gt_positive += 1
+    end
+    true_negatives = count(skipmissing(detections) .== false)
+    false_positives = count(skipmissing(detections) .== true)
+    if true_positives >= 1
+        return (
+            n_seizures = length(truth_bounds),
+            gt_positive = 1,
+            gt_negative = 0,
+            true_positives = 1,
+            false_positives = 0,
+            true_negatives = 0,
+            false_negatives = 0
+        )
+    elseif false_negatives >= 1
+        return (
+                n_seizures = length(truth_bounds),
+                gt_positive = 1,
+                gt_negative = 0,
+                true_positives = 0,
+                false_positives = 0,
+                true_negatives = 0,
+                false_negatives = 1
+            )
+    end
+    
+    true_negatives = count(skipmissing(detections) .== false)
+    false_positives = count(skipmissing(detections) .== true)
+    @assert gt_positive == 0
+    return (
+        n_seizures = length(truth_bounds),
+        gt_positive = gt_positive,
+        gt_negative = count(.!ismissing.(detections)),
+        true_positives = true_positives,
+        false_positives = false_positives,
+        true_negatives = true_negatives,
+        false_negatives = false_negatives
+    )
+end
+
 function evaluate_detection_posseizure_negepoch(truth_bounds::Vector{<:Tuple}, detections::AbstractVector, detections_times; epoch_s, snippets_duration_s)
     # One positive per seizure, one negative per non-seizure epoch
     epoch_bin_len = epoch_s ÷ snippets_duration_s
@@ -48,10 +183,7 @@ function evaluate_detection_posseizure_negepoch(truth_bounds::Vector{<:Tuple}, d
     true_negatives = 0
     false_negatives = 0
     gt_positive = 0
-    truth_bounds_plus_one_epoch = map(truth_bounds) do (on, off)
-        (max(on-epoch_s, minimum(detections_times)), min(off+epoch_s, maximum(detections_times)))
-    end
-    epoch_truth_bounds = discretize_and_merge_bounds(truth_bounds_plus_one_epoch, epoch_s)
+    epoch_truth_bounds = epochize_bounds(truth_bounds, first(detections_times), last(detections_times); epoch_s=epoch_s)
     for (on, off) ∈ epoch_truth_bounds
         interval_bin_idxs = find_containing_bins(on, off, detections_times)
         if all(ismissing.(detections[interval_bin_idxs]))
@@ -236,6 +368,40 @@ function roll_signals(raw_signals::NamedDimsArray; window_fn, rolling_window_s, 
     NamedDimsArray{(:_, :time)}(apply_rolling_window(raw_signals, window_fn, window_len))
 end
 
+function standardize_signals!(signals::AbstractVector{<:AbstractArray}; standardization, unused_params...)
+    if standardization == "within"
+        for idx ∈ eachindex(signals)
+            not_missings = .!ismissing.(signals[idx][1,:])
+            signals[idx] .-= mean(signals[idx][:, not_missings], dims=:time)
+            signals[idx] ./= std(signals[idx][:, not_missings], dims=:time)
+        end
+    elseif standardization == "across"
+        cat_signals = cat(signals..., dims=:time)
+        cat_not_missings = .!ismissing.(cat_signals[1,:])
+        signal_means = mean(cat_signals[:,cat_not_missings], dims=:time)
+        signal_stds = std(cat_signals[:,cat_not_missings], dims=:time)
+
+        for idx ∈ eachindex(signals)
+            signals[idx] .-= signal_means
+            signals[idx] ./= signal_stds
+        end
+    else
+        error("What's \"$standardization\" standardization?")
+    end
+end
+
+function standardize_signals!(signals::AbstractArray{<:Union{Missing,Number}}; standardization, unused_params...)
+    if standardization == "within"
+        not_missings = .!ismissing.(signals[1,:])
+        signals .-= mean(signals[:, not_missings], dims=:time)
+        signals ./= std(signals[:, not_missings], dims=:time)
+    elseif standardization == "across"
+        error("Cannot standardize across single patient.")
+    else
+        error("What's \"$standardization\" standardization?")
+    end
+end
+
 function reduce_signal_distance(raw_signals::NamedDimsArray; window_fn, rolling_window_s, snippets_duration_s, unused_params...)
     raw_signals = NamedDimsArray{(:_, :time)}(raw_signals)
     window_len = rolling_window_s ÷ snippets_duration_s
@@ -380,3 +546,5 @@ function plot_NODRAW_seizure_detection_ROC_standard!(roc_df::DataFrame; color=:b
             "TPR"
     ) * visual(Lines, color=color, linewidth=5)
 end
+
+

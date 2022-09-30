@@ -298,7 +298,7 @@ end
 function load_most_recent_jld2(match_str, dir)
     all_saves = mapreduce(vcat, walkdir(dir)) do (root, dirs, files)
         basenames = filter(Base.Fix1(occursin, "jld2"), files)
-        matching_names = filter(Base.Fix1(occursin, match_str), basenames)
+        matching_names = filter(x -> ((length(x) >= length(match_str)) && (x[1:length(match_str)] == match_str)), basenames)
         joinpath.(Ref(root), matching_names)
     end
     if isempty(all_saves)

@@ -1,4 +1,17 @@
 
+function load_or_calculate_epoch_differences_across_patients(signal_type, patients; session_id=Dates.now(), params...)
+    save_root = make_epochdiff_stem(signal_type; params...)
+    maybe_jld = load_most_recent_jld2(save_root, datadir())
+    results_df = if isnothing(maybe_jld)
+        results_df = calculate_epoch_differences_across_patients(signal_type, patients; session_id=session_id, params...)
+        @save datadir("$(save_root)$(session_id).jld2") results_df
+        results_df
+    else
+        maybe_jld["results_df"]
+    end
+end
+
+
 function calculate_epoch_differences_across_patients(signal_type, patients; get_channel_label=nothing, session_id=Dates.now(), params...)
 
     save_root = make_epochdiff_stem(signal_type; params...)
@@ -10,32 +23,25 @@ function calculate_epoch_differences_across_patients(signal_type, patients; get_
         signal = if isnothing(maybe_dict)
             @error "No signal named $(target_match_str)"
         else
-            if signal_type ∈ keys(maybe_dict)
-                if signal_type == "aEEG"
-                    aEEG_lower_margin(maybe_dict[signal_type])
-                else
-                    maybe_dict[signal_type]
-                end
-            elseif signal_type == "tricorr"
-                maybe_dict["contributions"]
-            else
-                @error "Unsupported signal type: $signal_type"
-            end
+            get_signal_from_dct_fn(signal_type)(maybe_dict)
         end
         if get_channel_label |> isnothing
             calculate_epoch_differences_single_patient(signal;
                 save_dir = save_dir,
-                params..., patient_num=patient_num
+                params..., patient_num=patient_num, signal_type=signal_type
             )
         else
             calculate_epoch_differences_single_patient(signal;
                 save_dir = save_dir, get_channel_label = get_channel_label,
-                params..., patient_num=patient_num
+                params..., patient_num=patient_num, signal_type=signal_type
             )
         end
     end
+    return results_df
+end
 
-
+function plot_epoch_differences_across_patients(signal_type, patients; session_id=Dates.now(), get_channel_label=nothing, patient_res_width=20, params...)
+    results_df = load_or_calculate_epoch_differences_across_patients(signal_type, patients; session_id=session_id, get_channel_label=get_channel_label, params...)
 
     @assert !isempty(results_df)
     results_df = DataFrame(results_df)
@@ -44,11 +50,11 @@ function calculate_epoch_differences_across_patients(signal_type, patients; get_
     else
         1:length(unique(results_df.channel)) .|> get_channel_label
     end
-    fig_significance = draw_significances_plot!(results_df; all_channel_labels=all_channel_labels)
-    fig_Δμ = draw_Δμ_plot(results_df; all_channel_labels=all_channel_labels)
-    fig_Δσ = draw_Δσ_plot(results_df; all_channel_labels=all_channel_labels)
-
-    @save datadir("$(save_root)$(session_id).jld2") results_df
+    fig_p = (resolution=(2600,2100),)
+    axis_p = (xticklabelrotation=pi/2,)
+    fig_significance = draw_significances_plot!(results_df; all_channel_labels=all_channel_labels, figure=fig_p, axis=axis_p)
+    fig_Δμ = draw_Δμ_plot(results_df; all_channel_labels=all_channel_labels, figure=fig_p, axis=axis_p)
+    fig_Δσ = draw_Δσ_plot(results_df; all_channel_labels=all_channel_labels, figure=fig_p, axis=axis_p)
 
     return (results_df, fig_significance, fig_Δμ, fig_Δσ)
 end
@@ -56,79 +62,54 @@ end
 
 function calculate_epoch_differences_single_patient(signal::NamedDimsArray;
         save_dir,
-        excluded_artifact_grades = [1],
+        excluded_artifact_grades,
         patient_num,
+        discretization_s,
         eeg = load_helsinki_eeg(patient_num; 
-            excluded_artifact_grades=excluded_artifact_grades
+            excluded_artifact_grades=excluded_artifact_grades,
+            discretization_s=discretization_s
         ),
         min_reviewers_per_seizure,
         min_snippets_for_comparison,
-        min_dist_to_seizure,
         snippets_duration_s,
-        rolling_window_s,
         get_channel_label = i -> eeg.labels[i],
-        unused_params...
+        params...
     )
     signal = NamedDimsArray{(:_, :time)}(signal)
     n_channels = size(signal, 1)
     mkpath(save_dir)
 
-    @show "snippets duration: $snippets_duration_s"
     signal_times = get_times(eeg, sample_rate=1/snippets_duration_s)
 
-    seizure_bounds, consensus = load_helsinki_seizure_annotations(patient_num; min_reviewers_per_seizure=min_reviewers_per_seizure)
+    seizure_bounds, consensus = load_helsinki_seizure_annotations(patient_num; min_reviewers_per_seizure=min_reviewers_per_seizure, discretization_s=discretization_s)
 
-    rolling_window = rolling_window_s ÷ snippets_duration_s
-    rolling_std_z = mapreduce(hcat, 1:n_channels) do i_signal
-        stds = [std(signal[i_signal,(i-rolling_window+1):(i)]) for i ∈ rolling_window:(size(signal,:time))]
-        (stds .- mean(skipmissing(stds))) ./ std(skipmissing(stds))
-    end
-    rolling_mean_z = mapreduce(hcat, 1:n_channels) do i_signal
-        means = [mean(signal[i_signal,(i-rolling_window+1):(i)]) for i ∈ rolling_window:(size(signal,:time))]
-        (means .- mean(skipmissing(means))) ./ std(skipmissing(means))
-    end
+    rolled_signal = roll_signals(signal; snippets_duration_s=snippets_duration_s, params...)
 
-    fig_std = plot_contributions(eeg, signal_times[rolling_window:end], rolling_std_z'; title="Rolling σ (zscored per channel; window = $(rolling_window))", resolution=(800,n_channels*100), get_label=get_channel_label)
-    save(joinpath(save_dir, "standard_deviations_zscored_window$(rolling_window)_pat$(patient_num).png"), fig_std)
+    standardized_signal = standardize_signals!(rolled_signal; params...)
 
-    fig_mean = plot_contributions(eeg, signal_times[rolling_window:end], rolling_mean_z'; title="Rolling μ (zscored per channel; window = $(rolling_window))", resolution=(800,n_channels*100), get_label=get_channel_label)
-    save(joinpath(save_dir, "means_zscored_window$(rolling_window)_pat$(patient_num).png"), fig_mean)
-
-    # SAME AS ABOVE, but not zscored
-    rolling_std = mapreduce(hcat, 1:n_channels) do i_signal
-        [std(signal[i_signal,(i-rolling_window+1):(i)]) for i ∈ rolling_window:(size(signal,:time))]
-    end
-    rolling_mean = mapreduce(hcat, 1:n_channels) do i_signal
-        [mean(signal[i_signal,(i-rolling_window+1):(i)]) for i ∈ rolling_window:(size(signal,:time))]
-    end
-
-    fig_std = plot_contributions(eeg, signal_times[rolling_window:end], rolling_std'; title="Rolling σ (window = $(rolling_window))", resolution=(800,n_channels*100), get_label=get_channel_label)
-    save(joinpath(save_dir, "standard_deviations_window$(rolling_window)_pat$(patient_num).png"), fig_std)
-
-    fig_mean = plot_contributions(eeg, signal_times[rolling_window:end], rolling_mean'; title="Rolling μ (window = $(rolling_window))", resolution=(800,n_channels*100), get_label=get_channel_label)
-    save(joinpath(save_dir, "means_window$(rolling_window)_pat$(patient_num).png"), fig_mean)
+    fig = plot_contributions(eeg, signal_times, standardized_signal; title="Rolling $(string(params[:window_fn])) (zscored $(params[:standardization]); window = $(params[:rolling_window_s])s)", resolution=(800,n_channels*100), get_label=params[:signal_type])
+    save(joinpath(save_dir, "rolling_$(string(params[:window_fn]))_window$(params[:rolling_window_s])_std$(params[:standardization])_pat$(patient_num).png"), fig)
 
     if isempty(seizure_bounds)
         @warn "Patient $(patient_num): no seizures."
         return []
     end
 
-    control_bounds = calc_control_bounds(eeg, snippets_duration_s, min_dist_to_seizure)
+    epochized_seizure_bounds = epochize_bounds(seizure_bounds, first(signal_times), last(signal_times); params...)
+    epochized_artifact_bounds = epochize_bounds(eeg.artifact_annotations, first(signal_times), last(signal_times); params...)
+    noncontrol_bounds = merge_bounds(epochized_seizure_bounds, epochized_artifact_bounds)
+    control_bounds = invert_bounds(noncontrol_bounds, 0, eeg.duration)
+
+    if isempty(control_bounds)
+        @warn "Patient $(patient_num): no control snippets"
+        return []
+    end
+
     control_snippets = mapreduce((x,y) -> x .|| y, control_bounds) do (on, off)
         on .<= (signal_times .+ 1) .< off
     end
     seizure_snippets = mapreduce((x,y) -> x .|| y, seizure_bounds) do (on, off)
         on .<= (signal_times .+ 1) .< off
-    end
-
-
-    if (length(control_snippets) < min_snippets_for_comparison)
-        @warn "Not enough control snippets ($(length(control_snippets))) in Patient $patient_num"
-        return []
-    end
-    if (length(seizure_snippets) < min_snippets_for_comparison) 
-        @warn "Not enough seizure snippets ($(length(seizure_snippets))) in Patient $patient_num"
-        return []
     end
 
     control_signal = signal[:, control_snippets]
@@ -155,7 +136,6 @@ function calculate_epoch_differences_single_patient(signal::NamedDimsArray;
 
     fig_kdes = plot_estimated_distributions(control_signal, seizure_signal; title="Patient = $(patient_num)", all_channel_labels=all_channel_labels)
     save(joinpath(save_dir, "estimated_distributions_pat$(patient_num).png"), fig_kdes)
-
 
     return (channel_JSDistances_KSpvalues_effect)
 

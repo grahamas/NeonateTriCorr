@@ -17,9 +17,9 @@ mkpath(all_analyses_path)
 
 
 for signal_type ∈ ["tricorr", "aEEG"], 
-    signals_reduction_name ∈ ["meanall", "maxany"], 
-    excluded_artifact_grades ∈ [Int[], [1]], 
-    min_reviewers_per_seizure ∈ 1:3
+    signals_reduction_name ∈ ["maxany"], 
+    excluded_artifact_grades ∈ [Int[]], 
+    min_reviewers_per_seizure ∈ 3:-1:1
 
     if signal_type == "tricorr"
         signals_reduction_name = "$(signals_reduction_name)abs"
