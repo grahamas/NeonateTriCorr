@@ -15,13 +15,21 @@ using KernelDensity
 
 include(scriptsdir("include_src.jl"))
 
+eval_dct = Dict(
+    "pospatient_negepoch" => (evaluate_detection_pospatient_negepoch, "patient"),
+    "posseizure_negepoch" => (evaluate_detection_posseizure_negepoch, "seizure")
+)
+
+
 let aEEG_signals_reduction_name = "maxany",
     tricorr_signals_reduction_name = "$(aEEG_signals_reduction_name)abs",
     patients_considered = patients_all,
     resolution=(1200,800);
 
+
+
 eval_str = "posseizure_negepoch"
-eval_fn = evaluate_detection_posseizure_negepoch
+eval_fn, eval_tpr = eval_dct[eval_str]
 
 save_dir = plotsdir("fig3_detectors_$(eval_str)_$(Dates.now())")
 mkpath(save_dir)
@@ -63,10 +71,10 @@ all_ROC_df = vcat(tricorr_across_ROC_df, tricorr_within_ROC_df, aEEG_across_ROC_
 plt = data(all_ROC_df) * mapping(
     (:false_positives,:gt_negative) => 
             ((f, gt) -> f / (gt * epoch_s / (60 * 60))) => 
-            "FP/Hour", 
+            "FP/hour", 
     (:true_positives,:gt_positive) => 
             ((t, gt) -> t / gt) => 
-            "TPR",
+            "per-$(eval_tpr) TPR",
     color=:signal, col=:standardization
 ) * visual(Lines, linewidth=5)
 
