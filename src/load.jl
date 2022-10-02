@@ -114,11 +114,12 @@ function calc_seizure_bounds(annotations::AbstractVector)
     end
 end
 
-function load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=3, discretization_s, kwargs...)
+function load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=3, discretization_s, min_time=0, max_time=Inf, kwargs...)
     second_annotations = load_count_annotations(eeg_num; kwargs...)
     consensus_bounds = calc_seizure_bounds(second_annotations .>= min_reviewers_per_seizure)
     if !isnothing(discretization_s)
-        consensus_bounds = discretize_bounds(consensus_bounds, discretization_s)
+        consensus_bounds = discretize_bounds(consensus_bounds, discretization_s; min_bound=min_time, max_bound=max_time)
+        # FIXME would rather have eeg bounds
     end
     # expensive way to  combine overlapping bounds
     consensus_bounds = merge_bounds(consensus_bounds, consensus_bounds)
@@ -175,7 +176,7 @@ function collapse_tuples!(tups::Array{T}) where T
     filter!(!=(dummy_val), tups)
 end
 
-function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start_time::Time=Time(EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf")).header.start), discretization_s)
+function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start_time::Time=Time(EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf")).header.start), discretization_s, min_time = 0, max_time = Inf)
     df = CSV.read(scriptsdir("helsinki_artifacts.csv"), DataFrame)
     subset!(df, "Patient #" => ByRow(==(eeg_num)))
     output_df = DataFrame(
@@ -184,18 +185,21 @@ function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start
         duration = parse_artifact_duration.(df.Duration)
     )
     possibly_intersecting_tuples = Tuple{Int,Int}[artifact_tuple(t.start, t.duration) for t in eachrow(output_df) if t.grade ∈ excluded_grades]
-    possibly_intersecting_tuples = discretize_bounds(possibly_intersecting_tuples, discretization_s)
+    possibly_intersecting_tuples = discretize_bounds(possibly_intersecting_tuples, discretization_s; min_bound=min_time, max_bound=max_time)
     collapse_tuples!(possibly_intersecting_tuples)
     return possibly_intersecting_tuples
 end
 
 function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_artifact_grades=[1], discretization_s)
     edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
-    seizures_start_stop, seizure_reviewers_count = load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=min_reviewers_per_seizure, discretization_s=discretization_s)
+    n_records = edf.header.record_count
+    seconds_per_record = edf.header.seconds_per_record
+    duration = n_records * seconds_per_record
+    seizures_start_stop, seizure_reviewers_count = load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=min_reviewers_per_seizure, discretization_s=discretization_s, min_time=0, max_time=duration)
     ProcessedEEG(edf; 
         exclude_channels=helsinki_eeg_bad_channels[eeg_num], 
         seizure_annotations=seizures_start_stop, 
-        artifact_annotations=load_helsinki_artifact_annotations(eeg_num, excluded_artifact_grades; start_time=Time(edf.header.start), discretization_s=discretization_s),
+        artifact_annotations=load_helsinki_artifact_annotations(eeg_num, excluded_artifact_grades; start_time=Time(edf.header.start), discretization_s=discretization_s, min_time=0, max_time = duration),
         label_replace = (label) -> replace(replace(replace(label, "-Ref" => ""), "-REF"=>""), "EEG " => ""),
         mains_hz=50,
         seizure_reviewers_count = seizure_reviewers_count,

@@ -41,7 +41,7 @@ function epochize_bounds(truth_bounds, start, stop; epoch_s, unused...)
     truth_bounds_plus_one_epoch = map(truth_bounds) do (on, off)
         (max(on-epoch_s, start), min(off+epoch_s, stop))
     end
-    epoch_truth_bounds = discretize_and_merge_bounds(truth_bounds_plus_one_epoch, epoch_s)
+    epoch_truth_bounds = discretize_and_merge_bounds(truth_bounds_plus_one_epoch, epoch_s; min_bound=start, max_bound=stop)
     return epoch_truth_bounds
 end
 
