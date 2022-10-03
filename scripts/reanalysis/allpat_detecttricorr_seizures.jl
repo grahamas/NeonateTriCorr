@@ -9,10 +9,15 @@ ext = "png"
 using Random, JLD2
 using LinearAlgebra
 using KernelDensity
+using ROCAnalysis
 
 include(scriptsdir("include_src.jl"))
 
-tricorr_sig_times_bounds = let signal_type = "tricorr", signals_reduction_name = "maxany",
+noto_sans_bold = assetpath("fonts", "NotoSans-Bold.ttf")
+font_theme = Theme(fontsize=24, Lines=Theme(color=:black), linewidth=4)
+set_theme!(font_theme)
+
+tricorr_targets_nontargets = let signal_type = "tricorr", signals_reduction_name = "maxany",
     patients_considered = patients_all;
  
 params = merge(common_params, analysis_particular_params["tricorr"])

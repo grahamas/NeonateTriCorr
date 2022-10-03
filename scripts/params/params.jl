@@ -15,7 +15,7 @@ common_params = Dict(
     :discretization_s => 15,
     :standardization => "within",
     :min_snippets_for_comparison => 20,
-    :evaluation_fn => evaluate_detection_pospatient_negpatientepoch
+    :calculate_targets_fn => pospatient_negepoch
 )
 
 analysis_particular_params = Dict(

@@ -20,11 +20,11 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         excluded_artifact_grades, min_reviewers_per_seizure, 
         snippets_duration_s, signal_from_dct_fn = get_signal_from_dct_fn(signal_type), 
         signals_reduction_name,
-        epoch_s, n_θs, 
+        epoch_s, 
         discretization_s,
         task_name = "$(signal_type)$(signals_reduction_name)",
         roc_resolution=(800,600),
-        evaluation_fn = evaluate_detection_posseizure_negepoch,
+        calculate_targets_fn,
         remaining_params...
     )
     reduce_signals_fn = get_reduce_signals_fn(signals_reduction_name)
@@ -85,32 +85,16 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         calculate_negepoch_non_seizure_hours(bounds, times, epoch_s, snippets_duration_s)
     end
 
-    min_θ, max_θ = calculate_threshold_range(reduced_signals)
-
-    function detect_all_patients(θ)
-        roc_vals = nothing
-        clean_negatives = (
-            gt_negative_clean=0,
-            false_positives_clean=0
-        )
-        for (signal, bounds, times) in zip(reduced_signals, seizure_bounds, signal_times)
-            single_patient_roc_vals = evaluation_fn(bounds, signal .>= θ, times; snippets_duration_s=snippets_duration_s, epoch_s=epoch_s)
-            if isempty(bounds)
-                clean_negatives = add_nts(clean_negatives, (
-                    gt_negative_clean=single_patient_roc_vals.gt_negative,
-                    false_positives_clean=single_patient_roc_vals.false_positives
-                ))
-            end
-            roc_vals = add_nts(roc_vals, single_patient_roc_vals)
-        end
-        non_seizure_hours = mapreduce(+, seizure_bounds, signal_times) do bounds, times
-            calculate_negepoch_non_seizure_hours(bounds, times, epoch_s, snippets_duration_s)
-        end
-        return merge(roc_vals, clean_negatives)
+    tars_and_nons = map(reduced_signals, signal_times, seizure_bounds) do signal, times, bounds
+         targets, non_targets = calculate_targets_fn(signal, times, bounds; epoch_s=epoch_s, snippets_duration_s=snippets_duration_s)
+         (targets, non_targets)
+    end
+    targets, non_targets = reduce(tars_and_nons) do (tar1, non1), (tar2, non2)
+        (vcat(tar1, tar2), vcat(non1, non2))
     end
 
-    all_patient_ROC_df = calculate_ROC(detect_all_patients, range(min_θ, max_θ, length=n_θs))
-    save_multipatient_ROC_df(patients_considered, all_patient_ROC_df; 
+    r = roc(targets, non_targets)
+    save_multipatient_ROC(patients_considered, all_patient_ROC_df; 
         signal_type=signal_type, 
         excluded_artifact_grades=excluded_artifact_grades, 
         min_reviewers_per_seizure=min_reviewers_per_seizure, 
@@ -118,35 +102,15 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         signal_from_dct_fn=signal_from_dct_fn, 
         signals_reduction_name=signals_reduction_name, 
         non_seizure_hours=non_seizure_hours,
-        evaluation_fn=evaluation_fn,
-        epoch_s=epoch_s, n_θs=n_θs, remaining_params...
+        calculate_targets_fn=calculate_targets_fn,
+        epoch_s=epoch_s, remaining_params...
     )
 
-    auc = calculate_AUC(all_patient_ROC_df)
-    all_patient_fig = Figure(resolution=roc_resolution)
-    plot_seizure_detection_ROC!(all_patient_fig[1,1], all_patient_ROC_df; epoch_s=epoch_s, non_seizure_hours=non_seizure_hours, title="Patients $(patients_considered) (AUC = $auc)")
-    save(joinpath(save_dir, "$(task_name)_$(length(patients_considered))patients_roc_nrev$(min_reviewers_per_seizure).png"), all_patient_fig)
 
-    # # Where the FPR is only from non-seizing patients
-    # n_clean_patients = sum(isempty.(seizure_bounds))
-    # clean_patient_ROC_df = copy(all_patient_ROC_df)
-    # clean_patient_ROC_df.gt_negative = clean_patient_ROC_df.gt_negative_clean
-    # clean_patient_ROC_df.false_positives = clean_patient_ROC_df.false_positives_clean
-    # clean_auc = calculate_AUC(clean_patient_ROC_df)
-    # clean_patient_fig = Figure(resolution=roc_resolution)
-    # plot_seizure_detection_ROC!(clean_patient_fig[1,1], clean_patient_ROC_df; non_seizure_hours=non_seizure_hours_clean, title="Patients $(patients_considered); FPR from $(n_clean_patients) clean patients (AUC = $clean_auc)")
-    # save(joinpath(save_dir, "$(task_name)_$(length(patients_considered))_FPRclean_patients_roc_nrev$(min_reviewers_per_seizure).png"), clean_patient_fig)
+    fig, plt, ax = plot_roc_fphr(r; resolution=roc_resolution)
+    save(joinpath(save_dir, "$(task_name)_$(length(patients_considered))patients_roc_nrev$(min_reviewers_per_seizure).png"), fig)
 
-    # # Step 3: Calculate and plot ROC for every standardized patient
-
-    # for (patient_num, eeg, signal, times, bounds) ∈ zip(patients_considered, eegs, signals, signal_times, seizure_bounds)
-    #     fig = plot_μ_and_σ_signals_and_roc(signal, times, bounds; analysis_eeg=eeg, epoch_s=epoch_s, snippets_duration_s=snippets_duration_s, 
-    #     signals_reduction_name=signals_reduction_name, title="Patient $(patient_num) (within standardized)", remaining_params...)
-
-    #     save(joinpath(save_dir, "$(task_name)_roc_patient$(patient_num)_nrev$(min_reviewers_per_seizure).png"), fig)
-    # end
-
-    return all_patient_ROC_df
+    return r
 end
 
 function evaluate_clinician_FPR(patients_considered; 

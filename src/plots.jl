@@ -129,3 +129,39 @@ function draw_Δσ_plot(df; all_channel_labels, draw_kwargs...)
     plt = data(df) * mapping(:channel => sorter(all_channel_labels), :Δσ_z => "Δσ z-score", layout= :patient => nonnumeric, color=:significance => sorter(sig_categories) => "significance") * visual(Stem, markersize=15)
     return draw(plt; palettes=(color=colors,), legend=(markersize=15,), draw_kwargs...)
 end
+
+using Makie: convert_arguments
+Makie.convert_arguments(P::PointBased, r::Roc) = convert_arguments(P, r.pfa, 1 .- r.pmiss)
+
+function plot_roc(r::Roc; xlabel="FPR", ylabel="TPR", title="AUC: $(1 - auc(r))")
+    (fig, ax, plt) = lines(r)
+    ax.title[] = title
+    ax.xlabel[] = xlabel
+    ax.ylabel[] = ylabel
+    tightlimits!(ax)
+    (fig, ax, plt)
+end
+
+function plot_roc_fphr(r::Roc; xlabel="FP/hr", ylabel="TPR", title="AUC: $(round(1 - auc(r), sigdigits=3))", resolution=(800,600))
+    fig = Figure(resolution=resolution)
+    fig[1,1] = ax = Axis(fig; xlabel=xlabel, ylabel=ylabel, title=title)
+    plt = plot_roc_fphr!(ax, r)
+    (fig, ax, plt)
+end
+
+function plot_roc_fphr!(ax::Axis, r::Roc; )
+    plt = lines!(ax, r.pfa .* 60, 1 .- r.pmiss)
+    tightlimits!(ax)
+    return plt
+end
+
+function tpr_at_fphr(r::Roc, fphr)
+    idx = findfirst(r.pfa .* 60. .<= fphr)
+    return 1 - r.pmiss[idx]
+end
+
+function fphr_at_tpr(r::Roc, tpr)
+    pmiss = 1 - tpr
+    idx = findfirst(r.pmiss .>= pmiss)
+    return r.pfa[idx] .* 60.
+end

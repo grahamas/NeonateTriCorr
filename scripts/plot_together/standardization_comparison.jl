@@ -23,11 +23,12 @@ tricorr_params = merge(common_params, analysis_particular_params["tricorr"])
 epoch_s = aEEG_params[:epoch_s]
 @assert tricorr_params[:epoch_s] == epoch_s
 
-tricorr_within_ROC_df, loaded_tricorr_params = load_or_calculate_multipatient_ROC_df(patients_considered, "tricorr", tricorr_signals_reduction_name; tricorr_params..., standardization = "within")
-aEEG_within_ROC_df, loaded_aEEG_params = load_or_calculate_multipatient_ROC_df(patients_considered, "aEEG", aEEG_signals_reduction_name; aEEG_params..., standardization="within")
+tricorr_within_ROC_df, loaded_tricorr_params = load_or_calculate_multipatient_ROC(patients_considered, "tricorr", tricorr_signals_reduction_name; tricorr_params..., standardization = "within")
+aEEG_within_ROC_df, loaded_aEEG_params = load_or_calculate_multipatient_ROC(patients_considered, "aEEG", aEEG_signals_reduction_name; aEEG_params..., standardization="within")
 
-tricorr_across_ROC_df, loaded_tricorr_params = load_or_calculate_multipatient_ROC_df(patients_considered, "tricorr", tricorr_signals_reduction_name; tricorr_params..., standardization = "across")
-aEEG_across_ROC_df, loaded_aEEG_params = load_or_calculate_multipatient_ROC_df(patients_considered, "aEEG", aEEG_signals_reduction_name; aEEG_params..., standardization="across")
+tricorr_across_ROC_df, loaded_tricorr_params = load_or_calculate_multipatient_ROC(patients_considered, "tricorr", tricorr_signals_reduction_name; tricorr_params..., standardization = "across")
+aEEG_across_ROC_df, loaded_aEEG_params = load_or_calculate_multipatient_ROC(patients_considered, "aEEG", aEEG_signals_reduction_name; aEEG_params..., standardization="across")
+@warn "FIXME New plotting functions!"
 
 tricorr_color = :blue
 aEEG_color = :red
