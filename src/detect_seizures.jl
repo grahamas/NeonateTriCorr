@@ -16,6 +16,21 @@ function coarse_grain_binary_signal(signal::AbstractVector{<:Union{Bool,Missing}
     end
     coarse_grained_signal
 end
+
+function coarse_grain_signal(signal::AbstractVector{<:Union{T,Missing}}, super_bin_len; reduction_fn=maximum) where T
+    coarse_grained_signal_len = ceil(Int, length(signal) / super_bin_len)
+    coarse_grained_signal = zeros(Union{T,Missing}, coarse_grained_signal_len)
+    for (i_sig, i_sup) ∈ zip(firstindex(signal):super_bin_len:lastindex(signal), 1:coarse_grained_signal_len)
+        fine_grained = signal[i_sig:min(i_sig+super_bin_len-1,lastindex(signal))]
+        if any(ismissing.(fine_grained))
+            coarse_grained_signal[i_sup] = missing
+        else
+            coarse_grained_signal[i_sup] = reduction_fn(fine_grained)
+        end
+    end
+    coarse_grained_signal
+end
+
 function find_containing_bins(start, stop, bin_start_times)
     # find the bins containing the start:stop interval
     start_idx = not_nothing(findlast(bin_start_times .<= start), firstindex(bin_start_times))
@@ -43,6 +58,74 @@ function epochize_bounds(truth_bounds, start, stop; epoch_s, unused...)
     end
     epoch_truth_bounds = discretize_and_merge_bounds(truth_bounds_plus_one_epoch, epoch_s; min_bound=start, max_bound=stop)
     return epoch_truth_bounds
+end
+
+# signal, signal_times, bounds -> (target, non_target)
+function pospatient_negepoch(signal::AbstractVector{<:Union{Missing,T}}, signal_times, target_bounds::Vector{<:Tuple}; epoch_s, snippets_duration_s) where T
+    # One positive per seizure, one negative per non-seizure epoch
+    epoch_bin_len = epoch_s ÷ snippets_duration_s
+    @assert epoch_bin_len * snippets_duration_s == epoch_s
+    epoch_signal = coarse_grain_signal(signal, epoch_bin_len, reduction_fn=maximum)
+    epoch_signal_times = signal_times[begin:epoch_bin_len:end]
+    epoch_target_bounds = epochize_bounds(target_bounds, first(epoch_signal_times), last(epoch_signal_times); epoch_s=epoch_s)
+    epoch_nontarget_bounds = invert_bounds(epoch_target_bounds, epoch_signal_times[begin], epoch_signal_times[end])
+
+    nonmissing_seizure_targets = skipmissing(map(epoch_target_bounds) do (on, off)
+        interval_bin_idxs = find_containing_bins(on, off, epoch_signal_times)
+        nonmissings = skipmissing(epoch_signal[interval_bin_idxs])
+        if isempty(nonmissings)
+            missing
+        else
+            maximum(nonmissings)
+        end
+    end)
+    targets = if isempty(nonmissing_seizure_targets)
+        T[]
+    else
+        maximum(nonmissing_seizure_targets)
+    end
+    nonmissing_non_targets = map(epoch_nontarget_bounds) do (on, off)
+        interval_bin_idxs = find_containing_bins(on, off, epoch_signal_times)
+        collect(skipmissing(epoch_signal[interval_bin_idxs]))
+    end
+    non_targets = if isempty(nonmissing_non_targets)
+        T[]
+    else
+        reduce(vcat, nonmissing_non_targets)
+    end
+
+    return (targets, non_targets)
+end
+
+function posseizure_negepoch(signal::AbstractVector{<:Union{Missing,T}}, signal_times, target_bounds::Vector{<:Tuple}; epoch_s, snippets_duration_s) where T
+    # One positive per seizure, one negative per non-seizure epoch
+    epoch_bin_len = epoch_s ÷ snippets_duration_s
+    @assert epoch_bin_len * snippets_duration_s == epoch_s
+    epoch_signal = coarse_grain_signal(signal, epoch_bin_len, reduction_fn=maximum)
+    epoch_signal_times = signal_times[begin:epoch_bin_len:end]
+    epoch_target_bounds = epochize_bounds(target_bounds, first(epoch_signal_times), last(epoch_signal_times); epoch_s=epoch_s)
+    epoch_nontarget_bounds = invert_bounds(epoch_target_bounds, epoch_signal_times[begin], epoch_signal_times[end])
+
+    targets = skipmissing(map(epoch_target_bounds) do (on, off)
+        interval_bin_idxs = find_containing_bins(on, off, epoch_signal_times)
+        nonmissings = skipmissing(epoch_signal[interval_bin_idxs])
+        if isempty(nonmissings)
+            missing
+        else
+            maximum(nonmissings)
+        end
+    end)
+    nonmissing_non_targets = map(epoch_nontarget_bounds) do (on, off)
+        interval_bin_idxs = find_containing_bins(on, off, epoch_signal_times)
+        collect(skipmissing(epoch_signal[interval_bin_idxs]))
+    end
+    non_targets = if isempty(nonmissing_non_targets)
+        T[]
+    else
+        reduce(vcat, nonmissing_non_targets)
+    end
+
+    return (targets, non_targets)
 end
 
 
@@ -208,6 +291,7 @@ function evaluate_detection_posseizure_negepoch(truth_bounds::Vector{<:Tuple}, d
         false_negatives = false_negatives
     )
 end
+
 
 # function add_grace_to_truth_bounds(truth_bounds, times, grace_s)
 #     if isempty(truth_bounds)
