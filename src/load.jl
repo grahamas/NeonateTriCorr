@@ -190,7 +190,7 @@ function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start
     return possibly_intersecting_tuples
 end
 
-function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_artifact_grades=[1], discretization_s)
+function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_artifact_grades=[1], discretization_s, unused...)
     edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
     n_records = edf.header.record_count
     seconds_per_record = edf.header.seconds_per_record
