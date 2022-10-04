@@ -11,6 +11,7 @@ include(srcdir("contribution_comparisons.jl"))
 include(srcdir("rolling_estimates.jl"))
 include(srcdir("detect_seizures.jl"))
 include(srcdir("aeeg.jl"))
+include(srcdir("latex_table.jl"))
 
 include(scriptsdir("meats/detect_patient_seizures.jl"))
 include(scriptsdir("meats/detect_all_patients_seizures.jl"))
