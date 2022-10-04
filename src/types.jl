@@ -87,7 +87,10 @@ function snip_start(eeg::ProcessedEEGv8, snip_start_sec::Int)
     snip(eeg, snip_start_sec, eeg.duration)
 end
 
-function snip(eeg::ProcessedEEGv8, snip_start_sec::Int, snip_stop_sec)
+function snip(eeg::ProcessedEEGv8, snip_start_sec, snip_stop_sec)
+    snip_start_maybe_float = snip_start_sec
+    snip_start_sec = round(Int, snip_start_sec)
+    @assert snip_start_sec == snip_start_maybe_float
     @show snip_start_sec snip_stop_sec
     snip_start_idx = round(Int, snip_start_sec * eeg.sample_rate + 1)
     snip_duration = snip_stop_sec - snip_start_sec

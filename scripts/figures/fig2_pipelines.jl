@@ -18,10 +18,10 @@ font_theme = Theme(fontsize=36, Lines=Theme(color=:black), linewidth=4)
 set_theme!(font_theme)
 
 let signal_types = ["aEEG", "tricorr"],
-    aEEG_signals_reduction_name = "maxany",
+    aEEG_signals_reduction_name = "meanall",
     tricorr_signals_reduction_name = "$(aEEG_signals_reduction_name)abs",
-    patients_considered = patients_all,
-    standardization="across",
+    patients_considered = [13],
+    standardization="within",
     resolution=(4000,2000);
 
 save_dir = plotsdir("contributions_plots_std$(standardization)_$(Dates.now())")
@@ -37,7 +37,6 @@ params = Dict(st => merge(common_params, analysis_particular_params[st], Dict(:s
 epoch_s = first(params)[2][:epoch_s]
 @assert all(params[st][:epoch_s] == epoch_s for st ∈ signal_types)
 
-# for patient_num ∈ patients_considered
 for patient_num ∈ patients_considered
     fig = Figure(resolution=resolution, axis=(labelsize=36,))
     n_st = (length(signal_types))
