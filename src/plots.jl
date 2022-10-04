@@ -149,9 +149,10 @@ function plot_roc_fphr(r::Roc; xlabel="FP/hr", ylabel="TPR", title="AUC: $(round
     (fig, ax, plt)
 end
 
-function plot_roc_fphr!(ax::Axis, r::Roc; )
-    plt = lines!(ax, r.pfa .* 60, 1 .- r.pmiss)
+function plot_roc_fphr!(ax::Axis, r::Roc; kwargs...)
+    plt = lines!(ax, r.pfa .* 60, 1 .- r.pmiss; kwargs...)
     tightlimits!(ax)
+    ax.yticks = [0,1]
     return plt
 end
 

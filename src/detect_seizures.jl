@@ -106,7 +106,7 @@ function posseizure_negepoch(signal::AbstractVector{<:Union{Missing,T}}, signal_
     epoch_target_bounds = epochize_bounds(target_bounds, first(epoch_signal_times), last(epoch_signal_times); epoch_s=epoch_s)
     epoch_nontarget_bounds = invert_bounds(epoch_target_bounds, epoch_signal_times[begin], epoch_signal_times[end])
 
-    targets = skipmissing(map(epoch_target_bounds) do (on, off)
+    targets = collect(skipmissing(map(epoch_target_bounds) do (on, off)
         interval_bin_idxs = find_containing_bins(on, off, epoch_signal_times)
         nonmissings = skipmissing(epoch_signal[interval_bin_idxs])
         if isempty(nonmissings)
@@ -114,7 +114,7 @@ function posseizure_negepoch(signal::AbstractVector{<:Union{Missing,T}}, signal_
         else
             maximum(nonmissings)
         end
-    end)
+    end))
     nonmissing_non_targets = map(epoch_nontarget_bounds) do (on, off)
         interval_bin_idxs = find_containing_bins(on, off, epoch_signal_times)
         collect(skipmissing(epoch_signal[interval_bin_idxs]))

@@ -94,7 +94,7 @@ function detect_all_patients_seizures(patients_considered; signal_type,
     end
 
     r = roc(targets, non_targets)
-    save_multipatient_ROC(patients_considered, all_patient_ROC_df; 
+    save_multipatient_ROC(patients_considered, r; 
         signal_type=signal_type, 
         excluded_artifact_grades=excluded_artifact_grades, 
         min_reviewers_per_seizure=min_reviewers_per_seizure, 
@@ -114,29 +114,28 @@ function detect_all_patients_seizures(patients_considered; signal_type,
 end
 
 function evaluate_clinician_FPR(patients_considered; 
+    calculate_targets_fn,
     excluded_artifact_grades,
     epoch_s, discretization_s, remaining_params...
 )
-    eegs_and_results = map(patients_considered) do patient_num
+    targets_and_non = map(patients_considered) do patient_num
         eeg = load_helsinki_eeg(patient_num; min_reviewers_per_seizure = 3, excluded_artifact_grades=excluded_artifact_grades, discretization_s=15)
         truth_bounds, _ = load_helsinki_seizure_annotations(patient_num; 
             min_reviewers_per_seizure=3, discretization_s=discretization_s
         )
-        any_clinician_bounds, _ = load_helsinki_seizure_annotations(patient_num; 
-            min_reviewers_per_seizure=1, discretization_s=discretization_s
-        )
+        signal = load_count_annotations(patient_num)
+        signal[signal .> 0] .= 1.
         times = get_times(eeg, sample_rate=1.)
-        detections = zeros(Bool, size(times))
-        for (sr,sp) ∈ any_clinician_bounds
-            detections[sr .<= times .< sp] .= true
-        end
-        results = evaluate_detection_posseizure_negepoch(truth_bounds, detections, times; snippets_duration_s=1, epoch_s=epoch_s)
-        return (eeg, results)
+        epoch_truth_bounds = epochize_bounds(truth_bounds, first(times), last(times); epoch_s=epoch_s)
+        targets, non_targets = calculate_targets_fn(signal, times, epoch_truth_bounds; snippets_duration_s=1, epoch_s=epoch_s)
+        return (targets, non_targets)
     end
 
-    eegs = first.(eegs_and_results)
-    all_patient_results = reduce(add_nts, last.(eegs_and_results))
+    all_targets =  reduce(vcat, first.(targets_and_non))
+    all_non_targets = reduce(vcat, last.(targets_and_non))
 
-    return (eegs, all_patient_results)
+    r = roc(all_targets, all_non_targets)
+
+    return r
 
 end
