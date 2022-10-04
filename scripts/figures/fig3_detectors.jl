@@ -54,7 +54,7 @@ for (i_pos, (pos_name, pos_fn)) ∈ enumerate([("seizure", posseizure_negepoch),
                 calculate_targets_fn=pos_fn
             )
             plot_roc_fphr!(ax, r; color=colors[signal_type], label=signal_type)
-            push!(nts, (target=pos_name, standardization=fn2str(standardization), signal=signal_type, auc=auc(r), ))
+            push!(nts, (target=pos_name, standardization=standardization, signal=signal_type, auc=(1-auc(r)), tpr57=tpr_at_fphr(r,5.7), fphr80=fphr_at_tpr(r,0.8)))
         end
     end
 end
@@ -62,6 +62,9 @@ axes[1,1].ylabel = "per-seizure TPR"
 axes[2,1].ylabel = "per-patient TPR"
 axes[2,1].xlabel = "FP/Hr"
 axes[2,2].xlabel = "FP/Hr"
+
+axes[1,1].title[] = "within"
+axes[1,2].title[] = "across"
 
 axislegend(axes[2,2]; halign=:right, valign=:bottom)
 
@@ -72,8 +75,23 @@ hideydecorations!.(axes[1:2,2]; grid=false)
 colgap!(fig.layout,50)
 rowgap!(fig.layout,50)
 
-save(joinpath(save_dir, "compare_aEEG_tricorr_standardizations_patients$(length(patients_considered))_$(signals_reduction_name)_ROCs_$(Dates.now()).$(ext)"), fig)
+label_A = fig[1,1,TopLeft()] = Label(fig, "A", font=noto_sans_bold, textsize=56, halign=:left)
+label_B = fig[1,2,TopLeft()] = Label(fig, "B", font=noto_sans_bold, textsize=56, halign=:left)
+label_C = fig[2,1,TopLeft()] = Label(fig, "C", font=noto_sans_bold, textsize=56, halign=:left)
+label_D = fig[2,2,TopLeft()] = Label(fig, "D", font=noto_sans_bold, textsize=56, halign=:left)
 
-return fig
+now = Dates.now()
+save(joinpath(save_dir, "compare_aEEG_tricorr_standardizations_patients$(length(patients_considered))_$(signals_reduction_name)_ROCs_$(now).$(ext)"), fig)
+
+sensitivity_df = DataFrame(nts)
+save(joinpath(save_dir, "compare_aEEG_tricorr_standardizations_patients$(length(patients_considered))_$(signals_reduction_name)_sensitivity_$(now).jld2"), Dict("sensitivity_df" => sensitivity_df))
+
+sort!(sensitivity_df, [:target, :standardization, :signal])
+
+open(joinpath(save_dir, "sensitivity_3rev_all_patients.tex"), "w") do io
+    write(io, latexify_sensitivity(sensitivity_df))
+end
+
+return (fig, sensitivity_df)
 
 end
