@@ -38,60 +38,35 @@ function conditions_from_lag_nums(n1, t1, n2, t2)
     return conditions_str
 end
 
-function prettify_df(df)
-    DataFrame(prettify_row.(eachrow(df)))
+function prettify_df(df, row_fn)
+    DataFrame(row_fn.(eachrow(df)))
 end
 
-function prettify_row(row)
+function fixed_reduction_rev_set_excl_row(r)
     (
-        spike_motif = row.spike_motif,
-        n1 = sign_str(row.n1_num),
-        t1 = sign_str(row.t1_num),
-        n2 = sign_str(row.n2_num),
-        t2 = sign_str(row.t2_num),
-        motif_class = roman_encode(row.motif_class_num),
-        conditions = conditions_from_lag_nums(row.n1_num, row.t1_num, row.n2_num, row.t2_num)
+        target=r.target,
+        standardization = r.standardization,
+        signal = r.signal,
+        AUC = r.auc,
+        TPR = r.tpr57,
+        FPHr = r.fphr80
     )
 end
 
 using LaTeXStrings
 
-function latexify(df::DataFrame)
+function latexify_sensitivity(df::DataFrame)
     """
-Lag Motif & \$n_1\$ & \$t_1\$ & \$n_2\$ & \$t_2\$ & Constraints & Information Flow Pattern & Configuration \\\\
+Target & Standardization & Signal & AUC & TPR (5.7 FP/Hr) & FP/Hr (80\\% TPR)\\\\
     \\hline
     """ *
-    join(latexify.(eachrow(df)), "\\\\\n")
+    join(latexify_sensitivity.(eachrow(df)), "\\\\\n")
 end
 
-function graphics_scaling_string(n_same_neurons, n_same_times)
-    if n_same_neurons == 3 && n_same_times == 3
-        return "height=1.5cm"
-    else
-        return "scale=1.0"
-    end
-end
+round_if_number(x) = x
+round_if_number(x::Number) = round(x, sigdigits=2) 
 
-function latexify(row::DataFrameRow)
-    row_contents = join(getproperty.(Ref(row), ["spike_motif", "n1", "t1", "n2", "t2", "conditions", "motif_class"]), "&")
-    row_contents *= "& \\adjustbox{padding=0em 0.5em 0em 0.5em, raise=-0.33\\height}{\\includegraphics{motif_figs/$(row.spike_motif).png}}"
+function latexify_sensitivity(row::DataFrameRow)
+    row_contents = join(round_if_number.(getproperty.(Ref(row), ["target", "standardization", "signal", "auc", "tpr57", "fphr80"])), "&")
     return row_contents
-end
-
-function remap_old_filenames(srcdir, dstdir)
-    old_classes = generate_all_lag_motif_classes_OLD()
-    new_classes = generate_all_lag_motif_classes()
-    @show old_classes
-    @show new_classes
-    ntnt2newname_mapping = Dict(
-        tup[2:end] => tup[1] for tup in new_classes
-    )
-    @show ntnt2newname_mapping
-    oldname2newname_mapping = Dict(
-        tup[1] => ntnt2newname_mapping[(tup[2],tup[4],tup[3],tup[5])] for tup in old_classes
-    )
-    @show oldname2newname_mapping
-    for (src, dst) in pairs(oldname2newname_mapping)
-        cp(joinpath(srcdir, "$(src).png"), joinpath(dstdir, "$(dst).png"))
-    end
 end

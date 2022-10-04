@@ -8,7 +8,6 @@ common_params = Dict(
     :min_reviewers_per_seizure => 3,
     :excluded_artifact_grades => Int[],
     :epoch_s => 60,
-    :snippets_duration_s => 1,
     :rolling_window_s => 60,
     :window_fn => mean,
     :n_θs => 100,
@@ -20,6 +19,7 @@ common_params = Dict(
 
 analysis_particular_params = Dict(
     "tricorr" => Dict(
+        :snippets_duration_s => 1,
         :preproc! => TripleCorrelations.zscore!, 
         :postproc! => TripleCorrelations.identity!,
         :assumption => IndStdNormal(), :conditioned_on => None(),
