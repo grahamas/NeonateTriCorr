@@ -52,42 +52,14 @@ for patient_num ∈ patients_considered
         not_missings = .!ismissing.(rolled_signal[1,:])
         rolled_signal .-= mean(rolled_signal[:, not_missings], dims=:time)
         rolled_signal ./= std(rolled_signal[:, not_missings], dims=:time)
-        fig[1:10,i_st] = signal_plts = plot_contributions!(fig, eeg, times, rolled_signal; get_label=st, epoch_s=p[:epoch_s], consensus_plot=false)
+        fig[1:10,i_st] = signal_plts = plot_contributions!(fig, eeg, times, rolled_signal; get_label=st, epoch_s=p[:epoch_s], consensus_plot=true)
 
-        reduce_signals_fn = get_reduce_signals_fn(p[:signals_reduction_name])
-        reduced_signal = reduce_signals_fn(rolled_signal)
-
-        # nonmissing_signal_idxs = findfirst(.!ismissing.(reduced_signal)):length(reduced_signal)
-        # reduced_signal = reduced_signal[nonmissing_signal_idxs]
-        # times = times[nonmissing_signal_idxs]
-        # @assert all(.!ismissing.(reduced_signal))
-        # if st == "tricorr"
-        #     reduced_signal = filtfilt(digitalfilter(Lowpass(1/30.; fs=(1. / p[:snippets_duration_s])), Butterworth(4)), reduced_signal)
-        # end
-
-        fig[(1:4) .+ ((i_st-1)*4) ,(n_st+1):(n_st+3)] = reduced_plt = plot_contributions!(fig, eeg, times, reduced_signal'; epoch_s=p[:epoch_s], get_label=x->" ", consensus_plot=false)
-
-        # F = fft(Vector{Float64}(reduced_signal)) |> fftshift
-        # freqs = fftfreq(length(reduced_signal), 1.0 / p[:snippets_duration_s]) |> fftshift
-        # lines!(ax, freqs, log10.(abs.(F) .^ 2), title="Power spectrum")
-
-        if i_st == 1
-            cons_layout = GridLayout()
-            cons_layout[1,1] = cons_ax
-            plot_reviewer_consensus!(cons_ax, eeg)
-            cons_layout[1,2] = Label(fig, " ", tellheight=false, tellwidth=true, rotation=-pi/2)
-            fig[9:10,(n_st+1):(n_st+3)] = cons_layout
-        end
-        linkxaxes!(cons_ax, content(reduced_plt[1,1]))
 
     end
 
     label_A = fig[1,1,TopLeft()] = Label(fig, "A", font=noto_sans_bold, textsize=56, halign=:left)
-    label_B = fig[1,2,TopLeft()] = Label(fig, "B", font=noto_sans_bold, textsize=56, halign=:left)
-    label_C = fig[1,3,TopLeft()] = Label(fig, "C", font=noto_sans_bold, textsize=56, halign=:left)
-    label_D = fig[5,3,TopLeft()] = Label(fig, "D", font=noto_sans_bold, textsize=56, halign=:left)
-    label_E = fig[9,3,TopLeft()] = Label(fig, "E", font=noto_sans_bold, textsize=56, halign=:left)
 
+    
     save(joinpath(save_dir, "both_contributions_patient$(patient_num)_$(Dates.now()).png"), fig)
 
     fig

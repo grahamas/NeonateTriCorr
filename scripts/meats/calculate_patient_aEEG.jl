@@ -1,13 +1,15 @@
 function calculate_patient_aEEG(patient_num;
         excluded_artifact_grades,
-        eeg = load_helsinki_eeg(patient_num; excluded_artifact_grades=excluded_artifact_grades),
+        discretization_s,
+        min_reviewers_per_seizure,
+        eeg = load_helsinki_eeg(patient_num; min_reviewers_per_seizure=min_reviewers_per_seizure, excluded_artifact_grades=excluded_artifact_grades, discretization_s=discretization_s),
         plot_traces=true,
         force_recalculate_aEEG=false,
         parent_session_id=nothing,
         snippets_duration_s,
         params...
     )
-    params = Dict(params..., :excluded_artifact_grades => excluded_artifact_grades, :patient_num => patient_num, :snippets_duration_s => snippets_duration_s)
+    params = Dict(params..., :excluded_artifact_grades => excluded_artifact_grades, :patient_num => patient_num, :snippets_duration_s => snippets_duration_s, :discretization_s => discretization_s, :min_reviewers_per_seizure => min_reviewers_per_seizure)
     str_params = convert_keys_to_strings(params)
 
     unique_id = if !isnothing(parent_session_id)

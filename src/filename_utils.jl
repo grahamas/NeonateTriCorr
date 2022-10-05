@@ -13,12 +13,12 @@ function artifacts_str(excluded_artifact_grades)
     end
 end
 
-function make_aEEG_stem(; excluded_artifact_grades, patient_num="", lowpass_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc, unused_params...)
+function make_aEEG_stem(; excluded_artifact_grades, patient_num="", envelope_freq, low_freq, high_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc, unused_params...)
     if !isempty(unused_params)
         @warn "Signal filename provided unused parameters: $unused_params"
     end
     artifacts = artifacts_str(excluded_artifact_grades)
-    "aEEG$(artifacts)_snippets$(snippets_duration_s)_lowpass$(lowpass_freq)_lmargin$(lower_margin_perc)_umargin$(upper_margin_perc)_helsinkiEEG$(patient_num)_"
+    "aEEG$(artifacts)_snippets$(snippets_duration_s)_band$(low_freq)_$(high_freq)_env$(envelope_freq)_lmargin$(lower_margin_perc)_umargin$(upper_margin_perc)_helsinkiEEG$(patient_num)_"
 end
 
 function make_tricorr_stem(; excluded_artifact_grades, preproc!, postproc!, assumption, conditioned_on, snippets_duration_s, lag_extents, patient_num="", unused_params...)

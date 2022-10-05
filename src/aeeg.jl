@@ -1,11 +1,13 @@
 using DSP
 
-function calculate_aEEG(eeg::AbstractEEG, signal::AbstractVector{T}, fs, lowpass_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc) where T
+function calculate_aEEG(eeg::AbstractEEG, signal::AbstractVector{T}, fs, envelope_freq, low_freq, high_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc) where T
     if any(ismissing.(signal))
         @error "aEEG given incomplete signal; Missings corrupt."
     end
-    f = digitalfilter(Lowpass(lowpass_freq, fs=fs), Butterworth(5))
-    output = filt(f, abs.(signal))
+    f = digitalfilter(Bandpass(low_freq, high_freq; fs=fs), FIRWindow(DSP.hamming(50)); )
+    output = abs.(filt(f, signal))
+    envelope_f = digitalfilter(Lowpass(envelope_freq; fs=fs), Butterworth(5))
+    output = filt(envelope_f, output)
     output = set_artifacts_missing(output, eeg)
     window_len_idx = floor(Int,snippets_duration_s*fs)
     window_starts = (0:window_len_idx:(length(output)-window_len_idx)) .+ 1
@@ -23,11 +25,11 @@ function calculate_aEEG(eeg::AbstractEEG, signal::AbstractVector{T}, fs, lowpass
     return margins
 end
 
-function calculate_aEEG(eeg::AbstractEEG; lowpass_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc, unused_params...)
+function calculate_aEEG(eeg::AbstractEEG; envelope_freq, low_freq, high_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc, unused_params...)
     signals = get_signal(eeg)
     fs = eeg.sample_rate
     map(1:size(signals,1)) do i_channel
-        calculate_aEEG(eeg, signals[i_channel,:], fs, lowpass_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc)
+        calculate_aEEG(eeg, signals[i_channel,:], fs, envelope_freq, low_freq, high_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc)
     end
 end
 

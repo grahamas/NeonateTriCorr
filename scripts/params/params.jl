@@ -26,7 +26,9 @@ analysis_particular_params = Dict(
         :signal_type => "tricorr"
     ),
     "aEEG" => Dict(
-        :lowpass_freq => 0.31,
+        :envelope_freq => 0.32,
+        :low_freq => 2.,
+        :high_freq => 20.,
         :snippets_duration_s => 15,
         :lower_margin_perc => 0.09,
         :upper_margin_perc => 0.93,
