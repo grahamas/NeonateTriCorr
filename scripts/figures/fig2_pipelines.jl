@@ -59,7 +59,7 @@ for patient_num ∈ patients_considered
 
     label_A = fig[1,1,TopLeft()] = Label(fig, "A", font=noto_sans_bold, textsize=56, halign=:left)
 
-    
+
     save(joinpath(save_dir, "both_contributions_patient$(patient_num)_$(Dates.now()).png"), fig)
 
     fig
