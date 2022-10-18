@@ -25,7 +25,11 @@ To obtain triple correlations of recordings from the Helsinki dataset use the fo
 
 0. Activate this project (such as by typing `Pkg.activate("path/to/this/project")`)
 1. Download patient recordings with `download_helsinki_eegs(patient_numbers::Vector{Int})`
-1. Set `PAT` to be the number of a downloaded patient (`PAT=X`), and then run `contributions_timeseries/contributions_patPAT.jl` (alternatively: run `contributions_patPAT_artifacts.jl` to obtain triple correlation for all timepoints, including those annotated as artifacts)
-2. To compare the differences between seizure and non-seizure epochs, run `reanalysis/diffs_motifs.jl` (alternatively: with `_artifacts` suffix). 
-3. To attempt to detect seizures, run `reanalysis/detect_seizures_motif_0.jl`.
-4. Repeat the previous two steps with `diffs_aeeg.jl` and `detect_seizures_aeeg.jl` respectively to run the same analyses on aEEG-transformed recordings.
+2. Set `PAT` to be the number of a downloaded patient (`PAT=X`), and then run `contributions_timeseries/contributions_patPAT.jl` (alternatively: run `contributions_patPAT_artifacts.jl` to obtain triple correlation for all timepoints, including those annotated as artifacts). I typically ran this using SLURM on a cluster, so that the contributions were computed in parallel jobs.
+3. To compare the differences between seizure and non-seizure epochs, run `reanalysis/diffs_motifs.jl` (alternatively: with `_artifacts` suffix). 
+4. To attempt to detect seizures, run `reanalysis/detect_seizures_motif_0.jl`.
+5. Repeat the previous two steps with `diffs_aeeg.jl` and `detect_seizures_aeeg.jl` respectively to run the same analyses on aEEG-transformed recordings.
+
+## Reproduce figures
+
+To reproduce the figures, first follow steps 0-2 of the Data Pipeline instructions above. Then the `scripts/figures` scripts will reproduce all figures except the first (which resulted from plotting snippets of preprocessed EEG loaded using the `load_helsinki_eeg` function, exported, and then imported to MATLAB).
