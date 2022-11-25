@@ -3,7 +3,7 @@ using DrWatson
 
 using CairoMakie
 noto_sans_bold = assetpath("fonts", "NotoSans-Bold.ttf")
-font_theme = Theme(fontsize=36, xticklabelsize=20, yticklabelsize=20, linecolor=:black, linewidth=4, labelsize=36)
+font_theme = Theme(fontsize=36, xticklabelsize=20, yticklabelsize=20, linecolor=:black, linewidth=4, labelsize=48)
 set_theme!(font_theme)
 
 

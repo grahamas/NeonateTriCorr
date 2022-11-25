@@ -3,7 +3,7 @@ using DrWatson
 
 using CairoMakie
 noto_sans_bold = assetpath("fonts", "NotoSans-Bold.ttf")
-font_theme = Theme(fontsize=36, xticklabelsize=20, yticklabelsize=20, linecolor=:black, linewidth=4)
+font_theme = Theme(fontsize=48, xticklabelsize=20, yticklabelsize=20, linecolor=:black, linewidth=4)
 set_theme!(font_theme)
 
 
@@ -63,13 +63,15 @@ axes[2,1].ylabel = "per-patient TPR"
 axes[2,1].xlabel = "FP/Hr"
 axes[2,2].xlabel = "FP/Hr"
 
-axes[1,1].title[] = "within"
-axes[1,2].title[] = "across"
+axes[1,1].title[] = "within-patient std"
+axes[1,2].title[] = "across-patient std"
 
-axislegend(axes[2,2]; halign=:right, valign=:bottom)
+#axislegend(axes[2,2]; halign=:right, valign=:bottom)
+#For presentation:
+axislegend.(axes; halign=:right, valign=:bottom)
 
 hidedecorations!.(axes; label = false, ticklabels = false, ticks = false, grid = false)
-hidexdecorations!.(axes[1,1:2]; label=true, ticklabels=true, grid=false)
+#hidexdecorations!.(axes[1,1:2]; label=true, ticklabels=true, grid=false)
 hideydecorations!.(axes[1:2,2]; grid=false)
 
 colgap!(fig.layout,50)
