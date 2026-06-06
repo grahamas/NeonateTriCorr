@@ -26,9 +26,19 @@ To obtain triple correlations of recordings from the Helsinki dataset use the fo
 0. Activate this project (such as by typing `Pkg.activate("path/to/this/project")`)
 1. Download patient recordings with `download_helsinki_eegs(patient_numbers::Vector{Int})`
 2. Set `PAT` to be the number of a downloaded patient (`PAT=X`), and then run `contributions_timeseries/contributions_patPAT.jl` (alternatively: run `contributions_patPAT_artifacts.jl` to obtain triple correlation for all timepoints, including those annotated as artifacts). I typically ran this using SLURM on a cluster, so that the contributions were computed in parallel jobs.
-3. To compare the differences between seizure and non-seizure epochs, run `reanalysis/diffs_motifs.jl` (alternatively: with `_artifacts` suffix). 
-4. To attempt to detect seizures, run `reanalysis/detect_seizures_motif_0.jl`.
-5. Repeat the previous two steps with `diffs_aeeg.jl` and `detect_seizures_aeeg.jl` respectively to run the same analyses on aEEG-transformed recordings.
+3. To compare the differences between seizure and non-seizure epochs, run `reanalysis/diffs_tricorr.jl` (alternatively: `reanalysis/diffs_tricorr_artifacts.jl`).
+4. To attempt to detect seizures from triple-correlation outputs, run `reanalysis/detecttricorr_seizures.jl` (alternatively: `reanalysis/detecttricorr_seizures_artifacts.jl`).
+5. Repeat the previous two steps with `reanalysis/diffs_aeeg.jl` and `reanalysis/detectaeeg_seizures.jl` respectively to run the same analyses on aEEG-transformed recordings (alternatively: `reanalysis/diffs_aEEG_artifacts.jl` and `reanalysis/detectaeeg_seizures_artifacts.jl`).
+
+## Verify checked-in artifacts
+
+The complete data pipeline depends on raw EEG/annotation files and unregistered Julia packages that are not stored in this repository. To verify the repository-local artifacts that are checked in here, install the verifier dependency (`python -m pip install h5py`) if needed and run:
+
+```
+python scripts/verification/verify_checked_results.py
+```
+
+This script checks that the pipeline scripts referenced above are present, validates the bundled one-second patient snippet (`pat9_snippet_1s.csv`), and verifies that the two checked-in JLD2 contribution result files still expose the expected `10 × 14` `Float64` contribution matrices.
 
 ## Reproduce figures
 
