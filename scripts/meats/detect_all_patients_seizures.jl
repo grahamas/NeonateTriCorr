@@ -8,8 +8,12 @@ end
 
 function load_signal(; discretization_s, snippets_duration_s, signal_type, signal_from_dct_fn = get_signal_from_dct_fn(signal_type), params...)
     target_match_str = make_signal_stem(signal_type; snippets_duration_s=snippets_duration_s, params...)
-    maybe_dict = load_most_recent_jld2(target_match_str, datadir("exp_pro"))
-    @assert !isnothing(maybe_dict) "No data like $target_match_str"
+    signal_dir = datadir("exp_pro")
+    maybe_dict = load_most_recent_jld2(target_match_str, signal_dir)
+    if isnothing(maybe_dict)
+        generation_script = signal_type == "aEEG" ? "scripts/contributions_timeseries/aEEG.jl" : "scripts/contributions_timeseries/contributions_patPAT.jl"
+        error("Missing generated $(signal_type) signal artifact matching stem `$(target_match_str)` under $(signal_dir). Generate it first with $(generation_script) for the requested patient/parameters.")
+    end
     sig = signal_from_dct_fn(maybe_dict)
     discretize_missings!(sig, discretization_s ÷ snippets_duration_s)
     sig

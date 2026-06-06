@@ -25,7 +25,9 @@ function calculate_patient_aEEG(patient_num;
     aEEG = if isnothing(maybe_dict) || force_recalculate_aEEG
         @info "Calculating aEEG..."
         aEEG = calculate_aEEG(eeg; params...)
-        save(datadir("exp_pro", "$(session_name).jld2"), Dict(
+        save_path = datadir("exp_pro", "$(session_name).jld2")
+        mkpath(dirname(save_path))
+        save(save_path, Dict(
             str_params...,
             "aEEG" => aEEG,
         )

@@ -4,9 +4,9 @@ function calculate_aEEG(eeg::AbstractEEG, signal::AbstractVector{T}, fs, envelop
     if any(ismissing.(signal))
         @error "aEEG given incomplete signal; Missings corrupt."
     end
-    f = digitalfilter(Bandpass(low_freq, high_freq; fs=fs), FIRWindow(DSP.hamming(50)); )
+    f = digitalfilter(Bandpass(low_freq, high_freq), FIRWindow(DSP.hamming(50)); fs=fs)
     output = abs.(filt(f, signal))
-    envelope_f = digitalfilter(Lowpass(envelope_freq; fs=fs), Butterworth(5))
+    envelope_f = digitalfilter(Lowpass(envelope_freq), Butterworth(5); fs=fs)
     output = filt(envelope_f, output)
     output = set_artifacts_missing(output, eeg)
     window_len_idx = floor(Int,snippets_duration_s*fs)

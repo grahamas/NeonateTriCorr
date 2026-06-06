@@ -1,5 +1,17 @@
 
-using ProgressMeter, JLD2
+using AlgebraOfGraphics
+using CairoMakie
+using DataFrames
+using JLD2
+using KernelDensity
+using LinearAlgebra
+using Makie
+using NamedDims
+using ProgressMeter
+using Random
+using ROCAnalysis
+using Statistics
+using StatsBase
 
 include(srcdir("types.jl"))
 include(srcdir("load.jl"))

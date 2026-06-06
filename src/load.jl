@@ -44,8 +44,8 @@ function process_signal(signal::EDF.Signal; seconds_per_record, asserted_samples
     int_data = signal.samples
     data = int_data .- mean(int_data)
     mains_halfband = mains_bandwidth/2
-    notch = digitalfilter(Bandstop(mains_hz-mains_halfband, mains_hz+mains_halfband; fs=sample_rate), Butterworth(6))
-    pass = digitalfilter(Bandpass(f_low, f_high; fs=sample_rate), Butterworth(2))
+    notch = digitalfilter(Bandstop(mains_hz-mains_halfband, mains_hz+mains_halfband), Butterworth(6); fs=sample_rate)
+    pass = digitalfilter(Bandpass(f_low, f_high), Butterworth(2); fs=sample_rate)
     data = filtfilt(notch, filtfilt(pass, data))' # want row
     data ./= std(data)
 end
@@ -191,7 +191,11 @@ function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start
 end
 
 function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_artifact_grades=[1], discretization_s, unused...)
-    edf = EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf"))
+    eeg_path = datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf")
+    if !isfile(eeg_path)
+        error("Missing Helsinki EDF for patient $(eeg_num) at $(eeg_path); run `download_helsinki_eegs([$(eeg_num)])` before loading this patient.")
+    end
+    edf = EDF.read(eeg_path)
     n_records = edf.header.record_count
     seconds_per_record = edf.header.seconds_per_record
     duration = n_records * seconds_per_record
@@ -300,11 +304,18 @@ function all_annotations()
 end
 
 function load_most_recent_jld2(match_str, dir)
-    all_saves = mapreduce(vcat, walkdir(dir)) do (root, dirs, files)
-        basenames = filter(Base.Fix1(occursin, "jld2"), files)
-        matching_names = filter(x -> ((length(x) >= length(match_str)) && (x[1:length(match_str)] == match_str)), basenames)
-        joinpath.(Ref(root), matching_names)
+    if !isdir(dir)
+        return nothing
     end
+
+    all_saves = String[]
+    for (root, _, files) in walkdir(dir)
+        matching_names = filter(files) do file
+            startswith(file, match_str) && endswith(file, ".jld2")
+        end
+        append!(all_saves, joinpath.(Ref(root), matching_names))
+    end
+
     if isempty(all_saves)
         return nothing
     end
@@ -349,7 +360,9 @@ function save_multipatient_ROC(patients_considered, roc::Roc; signal_type, signa
         multipatient_dfs[patients_considered] = (roc, Dict(params))
         multipatient_dfs
     end
-    save(datadir("exp_pro", "roc_multipatient", "$(target_match_str)$(session_id).jld2"), Dict("multipatient_roc_and_params" => multipatient_dfs))
+    save_path = datadir("exp_pro", "roc_multipatient", "$(target_match_str)$(session_id).jld2")
+    mkpath(dirname(save_path))
+    save(save_path, Dict("multipatient_roc_and_params" => multipatient_dfs))
 end
 
 function get_signal_from_dct_fn(signal_type)

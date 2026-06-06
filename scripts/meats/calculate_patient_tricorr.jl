@@ -37,7 +37,9 @@ function calculate_patient_tricorr(patient_num;
                 n_motif_classes = 14,
                 snippets_duration_s=snippets_duration_s
         )
-        save(datadir("exp_pro", "$(session_name).jld2"), 
+        save_path = datadir("exp_pro", "$(session_name).jld2")
+        mkpath(dirname(save_path))
+        save(save_path, 
             Dict(
                 "contributions" => contributions,
                 "excluded_artifact_grades" => excluded_artifact_grades,
