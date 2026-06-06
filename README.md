@@ -43,3 +43,7 @@ This script checks that the pipeline scripts referenced above are present, valid
 ## Reproduce figures
 
 To reproduce the figures, first follow steps 0-2 of the Data Pipeline instructions above. Then the `scripts/figures` scripts will reproduce all figures except the first (which resulted from plotting snippets of preprocessed EEG loaded using the `load_helsinki_eeg` function, exported, and then imported to MATLAB).
+
+For the expected paper-level cohort statistics, detector settings, ROC table
+values, and generated result files, see
+[`REPRODUCING_NEONATAL_SEIZURE_DETECTION_RESULTS.md`](REPRODUCING_NEONATAL_SEIZURE_DETECTION_RESULTS.md).

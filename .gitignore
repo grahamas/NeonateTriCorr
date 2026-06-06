@@ -419,3 +419,4 @@ remote_plots
 *.code-workspace
 scripts/reanalysis/diffs_aeeg_artifacts.jl
 *.mat
+.vscode/settings.json
