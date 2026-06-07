@@ -24,6 +24,7 @@ params = Dict(
     :min_dist_to_seizure => 30,
     :epoch_s => 60,
     :rolling_window_s => 60,
+    :discretization_s => 15,
     :snippets_duration_s => 1
 )
 contributions_PAT = calculate_patient_tricorr(PAT; 

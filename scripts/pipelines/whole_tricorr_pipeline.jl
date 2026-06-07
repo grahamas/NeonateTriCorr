@@ -22,6 +22,7 @@ params = Dict(
     :min_dist_to_seizure => 30,
     :epoch_s => 60,
     :rolling_window_s => 60,
+    :discretization_s => 15,
     :snippets_duration_s => 1
 )
 
@@ -30,6 +31,9 @@ download_helsinki_eegs(PATs)
 
 # calculate triple correlations
 for PAT in PATs
-    eeg = load_helsinki_eeg(PAT; excluded_artifact_grades=params[:excluded_artifact_grades])
+    eeg = load_helsinki_eeg(PAT;
+        excluded_artifact_grades=params[:excluded_artifact_grades],
+        discretization_s=params[:discretization_s]
+    )
     contributions = calculate_patient_tricorr(PAT; eeg=eeg, params...)
     

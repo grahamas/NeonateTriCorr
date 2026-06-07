@@ -1,6 +1,12 @@
 function calculate_patient_tricorr(patient_num;
         excluded_artifact_grades,
-        eeg = load_helsinki_eeg(patient_num; excluded_artifact_grades=excluded_artifact_grades),
+        discretization_s=nothing,
+        min_reviewers_per_seizure=3,
+        eeg = load_helsinki_eeg(patient_num;
+            min_reviewers_per_seizure=min_reviewers_per_seizure,
+            excluded_artifact_grades=excluded_artifact_grades,
+            discretization_s=discretization_s
+        ),
         snippets_duration_s, 
         preproc!, postproc!,
         assumption, conditioned_on,
@@ -21,7 +27,8 @@ function calculate_patient_tricorr(patient_num;
         preproc! = preproc!, postproc! = postproc!,
         assumption=assumption, conditioned_on=conditioned_on,
         lag_extents=lag_extents, patient_num=patient_num,
-        snippets_duration_s=snippets_duration_s
+        snippets_duration_s=snippets_duration_s,
+        discretization_s=discretization_s
     )
     session_name = "$(target_match_str)$(unique_id)"
     @info "Running: $session_name"
@@ -43,6 +50,7 @@ function calculate_patient_tricorr(patient_num;
             Dict(
                 "contributions" => contributions,
                 "excluded_artifact_grades" => excluded_artifact_grades,
+                "discretization_s" => discretization_s,
                 "snippets_duration_s"=> snippets_duration_s,
                 "lag_extents" => lag_extents,
                 "assumption" => assumption,
@@ -57,6 +65,7 @@ function calculate_patient_tricorr(patient_num;
         contributions = pop!(maybe_jld_dict, "contributions")
         parameters = Dict(
             "excluded_artifact_grades" => excluded_artifact_grades,
+            "discretization_s" => discretization_s,
             "snippets_duration_s"=> snippets_duration_s,
             "lag_extents" => lag_extents,
             "assumption" => assumption,

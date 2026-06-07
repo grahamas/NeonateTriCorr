@@ -12,21 +12,26 @@ function artifacts_str(excluded_artifact_grades)
         ""
     end
 end
-
-function make_aEEG_stem(; excluded_artifact_grades, patient_num="", envelope_freq, low_freq, high_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc, unused_params...)
-    if !isempty(unused_params)
-        @warn "Signal filename provided unused parameters: $unused_params"
-    end
-    artifacts = artifacts_str(excluded_artifact_grades)
-    "aEEG$(artifacts)_snippets$(snippets_duration_s)_band$(low_freq)_$(high_freq)_env$(envelope_freq)_lmargin$(lower_margin_perc)_umargin$(upper_margin_perc)_helsinkiEEG$(patient_num)_"
+function discretization_str(discretization_s)
+    isnothing(discretization_s) ? "" : "_discretization$(discretization_s)"
 end
 
-function make_tricorr_stem(; excluded_artifact_grades, preproc!, postproc!, assumption, conditioned_on, snippets_duration_s, lag_extents, patient_num="", unused_params...)
+function make_aEEG_stem(; excluded_artifact_grades, patient_num="", envelope_freq, low_freq, high_freq, snippets_duration_s, lower_margin_perc, upper_margin_perc, discretization_s=nothing, unused_params...)
     if !isempty(unused_params)
         @warn "Signal filename provided unused parameters: $unused_params"
     end
     artifacts = artifacts_str(excluded_artifact_grades)
-    "tricorr$(artifacts)_$(fn2str(preproc!))_$(fn2str(postproc!))_$(obj2str(assumption))_$(obj2str(conditioned_on))_snippets$(snippets_duration_s)_lagextents$(lag_extents[1])x$(lag_extents[2])_helsinkiEEG$(patient_num)_"
+    discretization = discretization_str(discretization_s)
+    "aEEG$(artifacts)$(discretization)_snippets$(snippets_duration_s)_band$(low_freq)_$(high_freq)_env$(envelope_freq)_lmargin$(lower_margin_perc)_umargin$(upper_margin_perc)_helsinkiEEG$(patient_num)_"
+end
+
+function make_tricorr_stem(; excluded_artifact_grades, preproc!, postproc!, assumption, conditioned_on, snippets_duration_s, lag_extents, discretization_s=nothing, patient_num="", unused_params...)
+    if !isempty(unused_params)
+        @warn "Signal filename provided unused parameters: $unused_params"
+    end
+    artifacts = artifacts_str(excluded_artifact_grades)
+    discretization = discretization_str(discretization_s)
+    "tricorr$(artifacts)$(discretization)_$(fn2str(preproc!))_$(fn2str(postproc!))_$(obj2str(assumption))_$(obj2str(conditioned_on))_snippets$(snippets_duration_s)_lagextents$(lag_extents[1])x$(lag_extents[2])_helsinkiEEG$(patient_num)_"
 end
 
 function make_signal_stem(signal_type; params...)

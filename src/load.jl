@@ -114,7 +114,7 @@ function calc_seizure_bounds(annotations::AbstractVector)
     end
 end
 
-function load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=3, discretization_s, min_time=0, max_time=Inf, kwargs...)
+function load_helsinki_seizure_annotations(eeg_num; min_reviewers_per_seizure=3, discretization_s=nothing, min_time=0, max_time=Inf, kwargs...)
     second_annotations = load_count_annotations(eeg_num; kwargs...)
     consensus_bounds = calc_seizure_bounds(second_annotations .>= min_reviewers_per_seizure)
     if !isnothing(discretization_s)
@@ -176,7 +176,7 @@ function collapse_tuples!(tups::Array{T}) where T
     filter!(!=(dummy_val), tups)
 end
 
-function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start_time::Time=Time(EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf")).header.start), discretization_s, min_time = 0, max_time = Inf)
+function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start_time::Time=Time(EDF.read(datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf")).header.start), discretization_s=nothing, min_time = 0, max_time = Inf)
     df = CSV.read(scriptsdir("helsinki_artifacts.csv"), DataFrame)
     subset!(df, "Patient #" => ByRow(==(eeg_num)))
     output_df = DataFrame(
@@ -185,12 +185,14 @@ function load_helsinki_artifact_annotations(eeg_num, excluded_grades=(1,); start
         duration = parse_artifact_duration.(df.Duration)
     )
     possibly_intersecting_tuples = Tuple{Int,Int}[artifact_tuple(t.start, t.duration) for t in eachrow(output_df) if t.grade ∈ excluded_grades]
-    possibly_intersecting_tuples = discretize_bounds(possibly_intersecting_tuples, discretization_s; min_bound=min_time, max_bound=max_time)
+    if !isnothing(discretization_s)
+        possibly_intersecting_tuples = discretize_bounds(possibly_intersecting_tuples, discretization_s; min_bound=min_time, max_bound=max_time)
+    end
     collapse_tuples!(possibly_intersecting_tuples)
     return possibly_intersecting_tuples
 end
 
-function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_artifact_grades=[1], discretization_s, unused...)
+function load_helsinki_eeg(eeg_num::Int; min_reviewers_per_seizure=3, excluded_artifact_grades=[1], discretization_s=nothing, unused...)
     eeg_path = datadir("exp_raw", "helsinki", "eeg$(eeg_num).edf")
     if !isfile(eeg_path)
         error("Missing Helsinki EDF for patient $(eeg_num) at $(eeg_path); run `download_helsinki_eegs([$(eeg_num)])` before loading this patient.")

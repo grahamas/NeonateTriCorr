@@ -65,6 +65,7 @@ function discretize_missings!(sig, discretization_step)
             discrete_block .= missing
         end
     end
+    return sig
 end
 
 
