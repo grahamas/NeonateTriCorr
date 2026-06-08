@@ -272,6 +272,18 @@ function validate_visibility_graph_sample_stride(sample_stride)
     Int(sample_stride)
 end
 
+function validate_visibility_graph_sample_strides(sample_strides)
+    sample_strides isa Integer && return [validate_visibility_graph_sample_stride(sample_strides)]
+
+    strides = Int[]
+    for sample_stride in sample_strides
+        push!(strides, validate_visibility_graph_sample_stride(sample_stride))
+    end
+    isempty(strides) &&
+        throw(ArgumentError("visibility graph sample strides must include at least one stride"))
+    unique(strides)
+end
+
 function strided_channel_segment(signals::AbstractMatrix, channel, sample_range, sample_stride)
     isempty(sample_range) && return Float64[]
 
@@ -370,9 +382,49 @@ function score_nvg_degree_anomaly(eeg::AbstractProcessedEEG, sample_ranges; samp
     )
 end
 
-function artifact_detection_methods(; visibility_graph_sample_stride=4)
+function visibility_graph_artifact_detection_methods(; hvg_sample_strides, nvg_sample_strides)
+    hvg_sample_strides = validate_visibility_graph_sample_strides(hvg_sample_strides)
+    nvg_sample_strides = validate_visibility_graph_sample_strides(nvg_sample_strides)
+    methods = ArtifactDetectionMethod[]
+    for sample_stride in hvg_sample_strides
+        push!(methods,
+            ArtifactDetectionMethod(
+                "hvg_degree_anomaly_stride$(sample_stride)",
+                "Maximum absolute robust z-score of HVG degree mean, maximum, and standard deviation across channels, using every $(sample_stride)th sample.",
+                (eeg, sample_ranges) -> score_hvg_degree_anomaly(eeg, sample_ranges;
+                    sample_stride=sample_stride
+                )
+            )
+        )
+    end
+    for sample_stride in nvg_sample_strides
+        push!(methods,
+            ArtifactDetectionMethod(
+                "nvg_degree_anomaly_stride$(sample_stride)",
+                "Maximum absolute robust z-score of NVG degree mean, maximum, and standard deviation across channels, using every $(sample_stride)th sample.",
+                (eeg, sample_ranges) -> score_nvg_degree_anomaly(eeg, sample_ranges;
+                    sample_stride=sample_stride
+                )
+            )
+        )
+    end
+    methods
+end
+
+function artifact_detection_methods(;
+        visibility_graph_sample_stride=4,
+        hvg_sample_strides=nothing,
+        nvg_sample_strides=nothing
+    )
     visibility_graph_sample_stride =
         validate_visibility_graph_sample_stride(visibility_graph_sample_stride)
+    hvg_sample_strides = isnothing(hvg_sample_strides) ?
+        [visibility_graph_sample_stride] :
+        validate_visibility_graph_sample_strides(hvg_sample_strides)
+    nvg_sample_strides = isnothing(nvg_sample_strides) ?
+        [visibility_graph_sample_stride] :
+        validate_visibility_graph_sample_strides(nvg_sample_strides)
+
     methods = ArtifactDetectionMethod[
         ArtifactDetectionMethod(
             "amplitude_robust_z",
@@ -401,22 +453,98 @@ function artifact_detection_methods(; visibility_graph_sample_stride=4)
         )
     ]
 
-    push!(methods,
-        ArtifactDetectionMethod(
-            "hvg_degree_anomaly_stride$(visibility_graph_sample_stride)",
-            "Maximum absolute robust z-score of HVG degree mean, maximum, and standard deviation across channels, using every $(visibility_graph_sample_stride)th sample.",
-            (eeg, sample_ranges) -> score_hvg_degree_anomaly(eeg, sample_ranges;
-                sample_stride=visibility_graph_sample_stride
-            )
-        ),
-        ArtifactDetectionMethod(
-            "nvg_degree_anomaly_stride$(visibility_graph_sample_stride)",
-            "Maximum absolute robust z-score of NVG degree mean, maximum, and standard deviation across channels, using every $(visibility_graph_sample_stride)th sample.",
-            (eeg, sample_ranges) -> score_nvg_degree_anomaly(eeg, sample_ranges;
-                sample_stride=visibility_graph_sample_stride
-            )
+    append!(methods, visibility_graph_artifact_detection_methods(;
+        hvg_sample_strides=hvg_sample_strides,
+        nvg_sample_strides=nvg_sample_strides
+    ))
+    methods
+end
+
+function validate_context_radius(radius)
+    radius isa Integer ||
+        throw(ArgumentError("artifact score context radius must be a nonnegative integer"))
+    radius >= 0 ||
+        throw(ArgumentError("artifact score context radius must be a nonnegative integer"))
+    Int(radius)
+end
+
+function finite_context_values(scores, center_idx, radius)
+    start_idx = max(firstindex(scores), center_idx - radius)
+    stop_idx = min(lastindex(scores), center_idx + radius)
+    Float64[Float64(score) for score in scores[start_idx:stop_idx] if isfinite(score)]
+end
+
+function contextualize_artifact_scores(scores; reducer, radius)
+    radius = validate_context_radius(radius)
+    contextual_scores = fill(NaN, length(scores))
+    for idx in eachindex(scores)
+        values = finite_context_values(scores, idx, radius)
+        if isempty(values)
+            continue
+        elseif reducer == :max
+            contextual_scores[idx] = maximum(values)
+        elseif reducer == :mean
+            contextual_scores[idx] = mean(values)
+        else
+            throw(ArgumentError("unsupported artifact score context reducer: $(reducer)"))
+        end
+    end
+    contextual_scores
+end
+
+function contextual_artifact_detection_method(method::ArtifactDetectionMethod; reducer, radius)
+    radius = validate_context_radius(radius)
+    reducer_name = if reducer == :max
+        "ctxmax"
+    elseif reducer == :mean
+        "ctxmean"
+    else
+        throw(ArgumentError("unsupported artifact score context reducer: $(reducer)"))
+    end
+
+    ArtifactDetectionMethod(
+        "$(method.name)_$(reducer_name)_w$(radius)",
+        "$(method.description) Context score: centered $(reducer) over current bin plus $(radius) neighboring bin(s) on each side.",
+        (eeg, sample_ranges) -> contextualize_artifact_scores(method.score_fn(eeg, sample_ranges);
+            reducer=reducer,
+            radius=radius
         )
     )
+end
+
+function contextual_artifact_detection_methods(
+        methods;
+        context_specs=((:max, 1), (:max, 2), (:mean, 1))
+    )
+    contextual_methods = ArtifactDetectionMethod[]
+    for method in methods
+        for (reducer, radius) in context_specs
+            push!(contextual_methods, contextual_artifact_detection_method(method;
+                reducer=reducer,
+                radius=radius
+            ))
+        end
+    end
+    contextual_methods
+end
+
+function artifact_iteration_methods(;
+        hvg_sample_strides=(1, 2, 4),
+        nvg_sample_strides=(4, 8, 16),
+        include_context=true,
+        context_specs=((:max, 1), (:max, 2), (:mean, 1)),
+        kwargs...
+    )
+    methods = artifact_detection_methods(;
+        hvg_sample_strides=hvg_sample_strides,
+        nvg_sample_strides=nvg_sample_strides,
+        kwargs...
+    )
+    if include_context
+        append!(methods, contextual_artifact_detection_methods(methods;
+            context_specs=context_specs
+        ))
+    end
     methods
 end
 
@@ -727,6 +855,312 @@ function add_score_auc_columns!(summary_df::DataFrame, score_df::DataFrame)
     summary_df
 end
 
+const ARTIFACT_FEATURE_ID_COLUMNS = [
+    :patient,
+    :bin_index,
+    :bin_start,
+    :bin_stop,
+    :artifact_truth,
+    :seizure_truth,
+    :clean_seizure_truth,
+    :seizure_event_id
+]
+
+function artifact_score_feature_table(score_df::AbstractDataFrame)
+    feature_names = Symbol.(sort(unique(String.(score_df.method))))
+    selected_df = select(DataFrame(score_df), ARTIFACT_FEATURE_ID_COLUMNS..., :method, :score)
+    feature_df = unstack(selected_df, ARTIFACT_FEATURE_ID_COLUMNS, :method, :score)
+    present_names = Symbol.(names(feature_df))
+    for feature_name in setdiff(feature_names, present_names)
+        feature_df[!, feature_name] = fill(NaN, nrow(feature_df))
+    end
+    sort!(feature_df, [:patient, :bin_index])
+    select!(feature_df, ARTIFACT_FEATURE_ID_COLUMNS..., feature_names...)
+    feature_df
+end
+
+function artifact_feature_names(feature_df::AbstractDataFrame)
+    id_columns = Set(ARTIFACT_FEATURE_ID_COLUMNS)
+    [Symbol(name) for name in names(feature_df) if Symbol(name) ∉ id_columns]
+end
+
+function artifact_feature_value(value)
+    ismissing(value) && return NaN
+    value isa Real || return NaN
+    value = Float64(value)
+    isfinite(value) ? value : NaN
+end
+
+function artifact_feature_matrix(feature_df::AbstractDataFrame, feature_names)
+    X = Matrix{Float64}(undef, nrow(feature_df), length(feature_names))
+    for (feature_idx, feature_name) in enumerate(feature_names)
+        values = feature_df[!, feature_name]
+        for row_idx in 1:nrow(feature_df)
+            X[row_idx, feature_idx] = artifact_feature_value(values[row_idx])
+        end
+    end
+    X
+end
+
+function artifact_feature_standardization(X::AbstractMatrix)
+    centers = zeros(Float64, size(X, 2))
+    scales = ones(Float64, size(X, 2))
+    for feature_idx in axes(X, 2)
+        finite_values = Float64[x for x in view(X, :, feature_idx) if isfinite(x)]
+        if isempty(finite_values)
+            centers[feature_idx] = 0.0
+            scales[feature_idx] = 1.0
+        else
+            center, scale = robust_center_and_scale(finite_values)
+            centers[feature_idx] = isfinite(center) ? center : 0.0
+            scales[feature_idx] = (isfinite(scale) && scale > eps(Float64)) ? scale : 1.0
+        end
+    end
+    centers, scales
+end
+
+function standardize_artifact_feature_matrix(X::AbstractMatrix, centers, scales)
+    Z = Matrix{Float64}(undef, size(X, 1), size(X, 2))
+    for feature_idx in axes(X, 2)
+        center = centers[feature_idx]
+        scale = scales[feature_idx]
+        for row_idx in axes(X, 1)
+            value = X[row_idx, feature_idx]
+            value = isfinite(value) ? value : center
+            standardized_value = (value - center) / scale
+            Z[row_idx, feature_idx] = isfinite(standardized_value) ? standardized_value : 0.0
+        end
+    end
+    Z
+end
+
+function stable_logistic(x)
+    if x >= 0
+        z = exp(-x)
+        1 / (1 + z)
+    else
+        z = exp(x)
+        z / (1 + z)
+    end
+end
+
+function artifact_logistic_class_weights(truth)
+    n = length(truth)
+    positives = count(truth)
+    negatives = n - positives
+    if positives == 0 || negatives == 0
+        return ones(Float64, n)
+    end
+
+    positive_weight = n / (2 * positives)
+    negative_weight = n / (2 * negatives)
+    [truth[idx] ? positive_weight : negative_weight for idx in eachindex(truth)]
+end
+
+function fit_weighted_ridge_logistic(
+        X::AbstractMatrix,
+        truth;
+        weights=artifact_logistic_class_weights(truth),
+        lambda=1.0,
+        max_iter=50,
+        tol=1e-8
+    )
+    n, p = size(X)
+    beta = zeros(Float64, p + 1)
+    y = Float64.(truth)
+    lambda = Float64(lambda)
+    X_design = hcat(ones(Float64, n), Matrix{Float64}(X))
+
+    for _ in 1:max_iter
+        eta = X_design * beta
+        probabilities = stable_logistic.(eta)
+        residuals = weights .* (probabilities .- y)
+        curvatures = weights .* probabilities .* (1 .- probabilities)
+        gradient = X_design' * residuals
+        hessian = X_design' * (reshape(curvatures, :, 1) .* X_design)
+
+        for beta_idx in 2:(p + 1)
+            gradient[beta_idx] += lambda * beta[beta_idx]
+            hessian[beta_idx, beta_idx] += lambda
+        end
+
+        step = try
+            hessian \ gradient
+        catch
+            for beta_idx in 1:(p + 1)
+                hessian[beta_idx, beta_idx] += 1e-6
+            end
+            hessian \ gradient
+        end
+        all(isfinite, step) || break
+        beta .-= step
+        maximum(abs.(step)) < tol && break
+    end
+
+    beta
+end
+
+function fit_artifact_logistic_model(
+        feature_df::AbstractDataFrame;
+        feature_names=artifact_feature_names(feature_df),
+        lambda=1.0,
+        max_iter=50,
+        tol=1e-8
+    )
+    isempty(feature_names) && throw(ArgumentError("artifact logistic model needs at least one feature"))
+    raw_X = artifact_feature_matrix(feature_df, feature_names)
+    centers, scales = artifact_feature_standardization(raw_X)
+    X = standardize_artifact_feature_matrix(raw_X, centers, scales)
+    truth = Vector{Bool}(feature_df.artifact_truth)
+    weights = artifact_logistic_class_weights(truth)
+    coefficients = fit_weighted_ridge_logistic(X, truth;
+        weights=weights,
+        lambda=lambda,
+        max_iter=max_iter,
+        tol=tol
+    )
+    (
+        feature_names=collect(feature_names),
+        centers=centers,
+        scales=scales,
+        coefficients=coefficients,
+        lambda=Float64(lambda)
+    )
+end
+
+function predict_artifact_logistic_probabilities(model, feature_df::AbstractDataFrame)
+    raw_X = artifact_feature_matrix(feature_df, model.feature_names)
+    X = standardize_artifact_feature_matrix(raw_X, model.centers, model.scales)
+    probabilities = Vector{Float64}(undef, size(X, 1))
+    for row_idx in axes(X, 1)
+        eta = model.coefficients[1]
+        for feature_idx in axes(X, 2)
+            eta += model.coefficients[feature_idx + 1] * X[row_idx, feature_idx]
+        end
+        probabilities[row_idx] = stable_logistic(eta)
+    end
+    probabilities
+end
+
+function best_f1_threshold(scores, truth; n_thresholds=100)
+    best_threshold = NaN
+    best_f1 = NaN
+    best_precision = NaN
+    best_recall = NaN
+    truth = Vector{Bool}(truth)
+    for threshold in threshold_values(scores; n_thresholds=n_thresholds)
+        predicted_artifact = isfinite.(scores) .& (scores .>= threshold)
+        metrics = artifact_confusion_metrics(predicted_artifact, truth)
+        if isfinite(metrics.f1) && (isnan(best_f1) || metrics.f1 > best_f1)
+            best_threshold = threshold
+            best_f1 = metrics.f1
+            best_precision = metrics.precision
+            best_recall = metrics.recall
+        end
+    end
+    (
+        threshold=best_threshold,
+        f1=best_f1,
+        precision=best_precision,
+        recall=best_recall
+    )
+end
+
+function leave_one_patient_out_artifact_classifier(
+        score_df::AbstractDataFrame;
+        lambda=1.0,
+        n_thresholds=100,
+        method_name="ridge_logistic_lopo",
+        method_description="Ridge logistic classifier over artifact score and context features, evaluated leave-one-patient-out."
+    )
+    feature_df = artifact_score_feature_table(score_df)
+    feature_names = artifact_feature_names(feature_df)
+    patients = sort(unique(feature_df.patient))
+    predicted_all = falses(nrow(feature_df))
+    probability_all = fill(NaN, nrow(feature_df))
+    patient_rows = NamedTuple[]
+    threshold_rows = NamedTuple[]
+    score_rows = NamedTuple[]
+
+    for patient in patients
+        test_mask = feature_df.patient .== patient
+        train_mask = .!test_mask
+        train_df = feature_df[train_mask, :]
+        test_df = feature_df[test_mask, :]
+        model = fit_artifact_logistic_model(train_df;
+            feature_names=feature_names,
+            lambda=lambda
+        )
+        train_probabilities = predict_artifact_logistic_probabilities(model, train_df)
+        threshold_result = best_f1_threshold(
+            train_probabilities,
+            Vector{Bool}(train_df.artifact_truth);
+            n_thresholds=n_thresholds
+        )
+        test_probabilities = predict_artifact_logistic_probabilities(model, test_df)
+        test_predictions = isfinite.(test_probabilities) .&
+            (test_probabilities .>= threshold_result.threshold)
+
+        test_indices = findall(test_mask)
+        predicted_all[test_indices] .= test_predictions
+        probability_all[test_indices] .= test_probabilities
+
+        push!(patient_rows, merge(
+            (patient=patient,),
+            method_metric_row(test_df, test_predictions;
+                method=method_name,
+                operating_point="lopo_train_best_f1_threshold",
+                threshold=threshold_result.threshold
+            )
+        ))
+        push!(threshold_rows, (
+            heldout_patient=patient,
+            threshold=threshold_result.threshold,
+            train_f1=threshold_result.f1,
+            train_precision=threshold_result.precision,
+            train_recall=threshold_result.recall,
+            train_bins=nrow(train_df),
+            test_bins=nrow(test_df)
+        ))
+
+        for (local_idx, row_idx) in enumerate(test_indices)
+            push!(score_rows, (
+                patient=feature_df[row_idx, :patient],
+                method=method_name,
+                method_description=method_description,
+                bin_index=feature_df[row_idx, :bin_index],
+                bin_start=feature_df[row_idx, :bin_start],
+                bin_stop=feature_df[row_idx, :bin_stop],
+                artifact_truth=feature_df[row_idx, :artifact_truth],
+                seizure_truth=feature_df[row_idx, :seizure_truth],
+                clean_seizure_truth=feature_df[row_idx, :clean_seizure_truth],
+                seizure_event_id=feature_df[row_idx, :seizure_event_id],
+                score=test_probabilities[local_idx]
+            ))
+        end
+    end
+
+    classifier_score_df = DataFrame(score_rows)
+    summary_df = DataFrame([
+        method_metric_row(feature_df, predicted_all;
+            method=method_name,
+            operating_point="lopo_train_best_f1_threshold",
+            threshold=NaN
+        )
+    ])
+    summary_df.auroc = [auc_from_scores(probability_all, Vector{Bool}(feature_df.artifact_truth))]
+    summary_df.auprc = [auprc_from_scores(probability_all, Vector{Bool}(feature_df.artifact_truth))]
+
+    (
+        summary_df=summary_df,
+        patient_df=DataFrame(patient_rows),
+        threshold_df=DataFrame(threshold_rows),
+        score_df=classifier_score_df,
+        feature_df=feature_df,
+        feature_names=feature_names
+    )
+end
+
 function plot_artifact_roc_curves(threshold_df::DataFrame; resolution=(1200, 800))
     fig = Figure(size=resolution)
     ax = Axis(fig[1, 1]; xlabel="False positive rate", ylabel="Artifact recall", title="Artifact ROC sweep")
@@ -846,6 +1280,99 @@ function run_artifact_detection_survey(;
             patient_df=patient_df,
             threshold_df=threshold_df,
             score_df=score_df,
+            output_dir=nothing,
+            plot_dir=nothing
+        )
+    end
+end
+
+function run_artifact_iteration_survey(;
+        patients=artifact_labeled_patients(),
+        methods=artifact_iteration_methods(),
+        bin_s=15,
+        artifact_grades=[1, 2],
+        min_reviewers_per_seizure=3,
+        n_thresholds=100,
+        fixed_fraction=0.05,
+        classifier_lambda=1.0,
+        run_classifier=true,
+        output_root=datadir("exp_pro", "artifact_detection_iterations"),
+        plot_root=plotsdir("artifact_detection_iterations_$(Dates.now())"),
+        artifact_csv_path=scriptsdir("helsinki_artifacts.csv"),
+        save_outputs=true
+    )
+    base_results = run_artifact_detection_survey(;
+        patients=patients,
+        methods=methods,
+        bin_s=bin_s,
+        artifact_grades=artifact_grades,
+        min_reviewers_per_seizure=min_reviewers_per_seizure,
+        n_thresholds=n_thresholds,
+        fixed_fraction=fixed_fraction,
+        output_root=output_root,
+        plot_root=plot_root,
+        artifact_csv_path=artifact_csv_path,
+        save_outputs=false
+    )
+
+    classifier_results = nothing
+    classifier_threshold_sweep_df = DataFrame()
+    summary_df = base_results.summary_df
+    patient_df = base_results.patient_df
+    threshold_df = base_results.threshold_df
+    score_df = base_results.score_df
+
+    if run_classifier
+        classifier_results = leave_one_patient_out_artifact_classifier(score_df;
+            lambda=classifier_lambda,
+            n_thresholds=n_thresholds
+        )
+        classifier_threshold_sweep_df =
+            threshold_sweep_for_method(classifier_results.score_df; n_thresholds=n_thresholds)
+        summary_df = vcat(summary_df, classifier_results.summary_df; cols=:union)
+        patient_df = vcat(patient_df, classifier_results.patient_df; cols=:union)
+        threshold_df = vcat(threshold_df, classifier_threshold_sweep_df; cols=:union)
+        score_df = vcat(score_df, classifier_results.score_df; cols=:union)
+    end
+
+    if save_outputs
+        session_id = Dates.now()
+        output_dir = joinpath(output_root, string(session_id))
+        mkpath(output_dir)
+        CSV.write(joinpath(output_dir, "artifact_detection_summary.csv"), summary_df)
+        CSV.write(joinpath(output_dir, "artifact_detection_per_patient.csv"), patient_df)
+        CSV.write(joinpath(output_dir, "artifact_detection_threshold_sweep.csv"), threshold_df)
+        CSV.write(joinpath(output_dir, "artifact_detection_bin_scores.csv"), score_df)
+        if run_classifier
+            CSV.write(
+                joinpath(output_dir, "artifact_detection_classifier_fold_thresholds.csv"),
+                classifier_results.threshold_df
+            )
+            CSV.write(
+                joinpath(output_dir, "artifact_detection_classifier_threshold_sweep.csv"),
+                classifier_threshold_sweep_df
+            )
+        end
+        save_artifact_detection_plots(summary_df, threshold_df, plot_root)
+        @info "Saved artifact detection iteration survey" output_dir plot_root
+        return (
+            summary_df=summary_df,
+            patient_df=patient_df,
+            threshold_df=threshold_df,
+            score_df=score_df,
+            classifier_results=classifier_results,
+            classifier_threshold_sweep_df=classifier_threshold_sweep_df,
+            output_dir=output_dir,
+            plot_dir=plot_root
+        )
+    else
+        return (
+            summary_df=summary_df,
+            patient_df=patient_df,
+            threshold_df=threshold_df,
+            score_df=score_df,
+            classifier_results=classifier_results,
+            classifier_threshold_sweep_df=classifier_threshold_sweep_df,
             output_dir=nothing,
             plot_dir=nothing
         )
