@@ -12,7 +12,10 @@ using Statistics
 include(scriptsdir("include_src.jl"))
 
 patients = isdefined(Main, :ARTIFACT_PATIENTS) ? ARTIFACT_PATIENTS : artifact_labeled_patients()
-methods = isdefined(Main, :ARTIFACT_METHODS) ? ARTIFACT_METHODS : artifact_detection_methods()
+visibility_graph_sample_stride = isdefined(Main, :ARTIFACT_VISIBILITY_GRAPH_SAMPLE_STRIDE) ? ARTIFACT_VISIBILITY_GRAPH_SAMPLE_STRIDE : 4
+methods = isdefined(Main, :ARTIFACT_METHODS) ? ARTIFACT_METHODS : artifact_detection_methods(
+    visibility_graph_sample_stride=visibility_graph_sample_stride
+)
 bin_s = isdefined(Main, :ARTIFACT_BIN_S) ? ARTIFACT_BIN_S : 15
 artifact_grades = isdefined(Main, :ARTIFACT_GRADES) ? ARTIFACT_GRADES : [1, 2]
 min_reviewers_per_seizure = isdefined(Main, :ARTIFACT_MIN_REVIEWERS_PER_SEIZURE) ? ARTIFACT_MIN_REVIEWERS_PER_SEIZURE : 3

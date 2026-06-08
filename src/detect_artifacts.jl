@@ -4,6 +4,8 @@ using Dates
 using DSP
 using Statistics
 
+import VisibilityGraphs: degree, horizontal_visibility_graph, natural_visibility_graph
+
 struct ArtifactDetectionMethod
     name::String
     description::String
@@ -260,8 +262,118 @@ function score_flatline_dropout(eeg::AbstractProcessedEEG, sample_ranges)
     scores
 end
 
-function artifact_detection_methods()
-    [
+const VISIBILITY_GRAPH_DEGREE_FEATURE_COUNT = 3
+
+function validate_visibility_graph_sample_stride(sample_stride)
+    sample_stride isa Integer ||
+        throw(ArgumentError("visibility graph sample stride must be a positive integer"))
+    sample_stride >= 1 ||
+        throw(ArgumentError("visibility graph sample stride must be a positive integer"))
+    Int(sample_stride)
+end
+
+function strided_channel_segment(signals::AbstractMatrix, channel, sample_range, sample_stride)
+    isempty(sample_range) && return Float64[]
+
+    start_idx = max(first(sample_range), first(axes(signals, 2)))
+    stop_idx = min(last(sample_range), last(axes(signals, 2)))
+    stop_idx < start_idx && return Float64[]
+
+    sample_indices = start_idx:sample_stride:stop_idx
+    segment = Vector{Float64}(undef, length(sample_indices))
+    for (idx, sample_idx) in enumerate(sample_indices)
+        value = signals[channel, sample_idx]
+        ismissing(value) && return Float64[]
+
+        value = Float64(value)
+        isfinite(value) || return Float64[]
+        segment[idx] = value
+    end
+    segment
+end
+
+function visibility_graph_degree_features(segment, graph_constructor)
+    length(segment) < 2 && return (NaN, NaN, NaN)
+
+    graph = graph_constructor(segment; tie_policy=:strict)
+    degrees = Float64.(degree(graph))
+    isempty(degrees) && return (NaN, NaN, NaN)
+    (mean(degrees), maximum(degrees), std(degrees))
+end
+
+function finite_robust_center_and_scale(xs)
+    finite_xs = Float64[x for x in xs if isfinite(x)]
+    isempty(finite_xs) && return (NaN, NaN)
+    robust_center_and_scale(finite_xs)
+end
+
+function score_visibility_graph_degree_anomaly(
+        eeg::AbstractProcessedEEG,
+        sample_ranges;
+        graph_constructor,
+        sample_stride=4
+    )
+    sample_stride = validate_visibility_graph_sample_stride(sample_stride)
+    signals = Matrix(eeg.signals)
+    n_channels = size(signals, 1)
+    n_bins = length(sample_ranges)
+    features = fill(NaN, n_channels, n_bins, VISIBILITY_GRAPH_DEGREE_FEATURE_COUNT)
+
+    for (bin_idx, sample_range) in enumerate(sample_ranges)
+        for channel in axes(signals, 1)
+            segment = strided_channel_segment(signals, channel, sample_range, sample_stride)
+            degree_features = visibility_graph_degree_features(segment, graph_constructor)
+            for feature_idx in 1:VISIBILITY_GRAPH_DEGREE_FEATURE_COUNT
+                features[channel, bin_idx, feature_idx] = degree_features[feature_idx]
+            end
+        end
+    end
+
+    centers = fill(NaN, n_channels, VISIBILITY_GRAPH_DEGREE_FEATURE_COUNT)
+    scales = fill(NaN, n_channels, VISIBILITY_GRAPH_DEGREE_FEATURE_COUNT)
+    for channel in 1:n_channels
+        for feature_idx in 1:VISIBILITY_GRAPH_DEGREE_FEATURE_COUNT
+            centers[channel, feature_idx], scales[channel, feature_idx] =
+                finite_robust_center_and_scale(view(features, channel, :, feature_idx))
+        end
+    end
+
+    scores = fill(NaN, n_bins)
+    for bin_idx in eachindex(scores)
+        score = -Inf
+        for channel in 1:n_channels
+            for feature_idx in 1:VISIBILITY_GRAPH_DEGREE_FEATURE_COUNT
+                feature = features[channel, bin_idx, feature_idx]
+                center = centers[channel, feature_idx]
+                scale = scales[channel, feature_idx]
+                if isfinite(feature) && isfinite(center) && isfinite(scale)
+                    score = max(score, abs((feature - center) / scale))
+                end
+            end
+        end
+        scores[bin_idx] = finite_or_nan(score)
+    end
+    scores
+end
+
+function score_hvg_degree_anomaly(eeg::AbstractProcessedEEG, sample_ranges; sample_stride=4)
+    score_visibility_graph_degree_anomaly(eeg, sample_ranges;
+        graph_constructor=horizontal_visibility_graph,
+        sample_stride=sample_stride
+    )
+end
+
+function score_nvg_degree_anomaly(eeg::AbstractProcessedEEG, sample_ranges; sample_stride=4)
+    score_visibility_graph_degree_anomaly(eeg, sample_ranges;
+        graph_constructor=natural_visibility_graph,
+        sample_stride=sample_stride
+    )
+end
+
+function artifact_detection_methods(; visibility_graph_sample_stride=4)
+    visibility_graph_sample_stride =
+        validate_visibility_graph_sample_stride(visibility_graph_sample_stride)
+    methods = ArtifactDetectionMethod[
         ArtifactDetectionMethod(
             "amplitude_robust_z",
             "Maximum absolute robust z-score across channels and samples.",
@@ -288,6 +400,24 @@ function artifact_detection_methods()
             score_flatline_dropout
         )
     ]
+
+    push!(methods,
+        ArtifactDetectionMethod(
+            "hvg_degree_anomaly_stride$(visibility_graph_sample_stride)",
+            "Maximum absolute robust z-score of HVG degree mean, maximum, and standard deviation across channels, using every $(visibility_graph_sample_stride)th sample.",
+            (eeg, sample_ranges) -> score_hvg_degree_anomaly(eeg, sample_ranges;
+                sample_stride=visibility_graph_sample_stride
+            )
+        ),
+        ArtifactDetectionMethod(
+            "nvg_degree_anomaly_stride$(visibility_graph_sample_stride)",
+            "Maximum absolute robust z-score of NVG degree mean, maximum, and standard deviation across channels, using every $(visibility_graph_sample_stride)th sample.",
+            (eeg, sample_ranges) -> score_nvg_degree_anomaly(eeg, sample_ranges;
+                sample_stride=visibility_graph_sample_stride
+            )
+        )
+    )
+    methods
 end
 
 function artifact_score_rows_for_patient(
