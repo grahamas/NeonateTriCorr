@@ -7,7 +7,7 @@ function add_nts(nt1::NT, nt2::NT) where {L, NT <: NamedTuple{L}}
 end
 
 function load_signal(; discretization_s, snippets_duration_s, signal_type, signal_from_dct_fn = get_signal_from_dct_fn(signal_type), params...)
-    target_match_str = make_signal_stem(signal_type; snippets_duration_s=snippets_duration_s, params...)
+    target_match_str = make_signal_stem(signal_type; snippets_duration_s=snippets_duration_s, discretization_s=discretization_s, params...)
     signal_dir = datadir("exp_pro")
     maybe_dict = load_most_recent_jld2(target_match_str, signal_dir)
     if isnothing(maybe_dict)
@@ -107,7 +107,9 @@ function detect_all_patients_seizures(patients_considered; signal_type,
         signals_reduction_name=signals_reduction_name, 
         non_seizure_hours=non_seizure_hours,
         calculate_targets_fn=calculate_targets_fn,
-        epoch_s=epoch_s, remaining_params...
+        epoch_s=epoch_s,
+        discretization_s=discretization_s,
+        remaining_params...
     )
 
 

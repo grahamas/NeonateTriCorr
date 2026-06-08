@@ -49,7 +49,11 @@ function TriCorrApplications.get_signal(eeg::ProcessedEEGv8)
     eeg.signals
 end
 function get_signal_sans_artifacts(eeg::ProcessedEEGv8; discretization_s=nothing)
-    sig = set_artifacts_missing(eeg.signals, eeg)
+    sig = if isempty(eeg.artifact_annotations)
+        eeg.signals
+    else
+        set_artifacts_missing(eeg.signals, eeg)
+    end
     if !isnothing(discretization_s)
         discretization_step = floor(Int, discretization_s * eeg.sample_rate)
         return discretize_missings!(sig, discretization_step)

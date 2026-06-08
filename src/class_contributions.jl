@@ -93,12 +93,16 @@ function calc_class_contributions(eeg::AbstractProcessedEEG,
     snippets_start_sec=0:snippets_duration_s:(n_seconds-snippets_duration_s)
     eeg_motif_class_contributions = NamedDimsArray{(:motif_class, :time)}(zeros(Union{Float64,Missing}, n_motif_classes, length(snippets_start_sec)))
 
-    snippet_generator = (get_signal_snippet_sans_artifacts(eeg, start, start+snippets_duration_s) for start in snippets_start_sec)
+    signal_sans_artifacts = get_signal_sans_artifacts(eeg)
+    has_artifacts = !isempty(eeg.artifact_annotations)
+    snippet_range(start) = floor(Int, start * eeg.sample_rate + 1):floor(Int, (start + snippets_duration_s) * eeg.sample_rate)
+    snippet_generator = (view(signal_sans_artifacts, :, snippet_range(start)) for start in snippets_start_sec)
     precalced_postproc! = precalculate(postproc!, assumption, condition, snippet_generator, boundary, lag_extents)
 
     @threads for i_sec ∈ eachindex(snippets_start_sec)
-        snippet = get_signal_snippet_sans_artifacts(eeg, snippets_start_sec[i_sec], snippets_start_sec[i_sec]+snippets_duration_s)
-        if any(ismissing.(snippet))
+        start = snippets_start_sec[i_sec]
+        snippet = view(signal_sans_artifacts, :, snippet_range(start))
+        if has_artifacts && any(ismissing.(snippet))
             eeg_motif_class_contributions[:,i_sec] .= missing
         else
             processed_snippet = Array{Float64}(copy(snippet))

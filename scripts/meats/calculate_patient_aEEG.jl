@@ -37,7 +37,7 @@ function calculate_patient_aEEG(patient_num;
         @info "Using cached aEEG!"
         aEEG = pop!(maybe_dict, "aEEG")
         @warn "popping unused variable"
-        pop!(maybe_dict, "min_dist_to_seizure")
+        pop!(maybe_dict, "min_dist_to_seizure", nothing)
         @assert maybe_dict == str_params "Expected $(maybe_dict); got $(str_params)"
         aEEG
     end
