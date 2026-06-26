@@ -52,6 +52,31 @@ function numeric_hvg_feature_names(df::AbstractDataFrame)
     sort(names_out; by=String)
 end
 
+function whole_hvg_requested_cluster_feature_names()
+    if !isdefined(Main, :WHOLE_HVG_CLUSTER_FEATURES)
+        return nothing
+    end
+    Symbol.(collect(WHOLE_HVG_CLUSTER_FEATURES))
+end
+
+function whole_hvg_cluster_feature_names(df::AbstractDataFrame; requested_features=nothing)
+    available_features = numeric_hvg_feature_names(df)
+    if isnothing(requested_features)
+        return available_features
+    end
+
+    requested_features = Symbol.(collect(requested_features))
+    available_feature_set = Set(available_features)
+    missing_features = [feature for feature in requested_features if feature ∉ available_feature_set]
+    if !isempty(missing_features)
+        throw(ArgumentError(
+            "Requested whole-HVG clustering features are missing from the input table: " *
+            join(String.(missing_features), ", ")
+        ))
+    end
+    requested_features
+end
+
 function whole_hvg_clustering_feature_matrix(df::AbstractDataFrame, feature_names)
     X = Matrix{Float64}(undef, nrow(df), length(feature_names))
     for (feature_idx, feature_name) in enumerate(feature_names)
@@ -317,9 +342,10 @@ function whole_hvg_embedding_df(
         tsne_max_rows=5000,
         tsne_seed=1,
         tsne_iterations=1000,
-        tsne_perplexity=30.0
+        tsne_perplexity=30.0,
+        feature_names=nothing
     )
-    feature_names = numeric_hvg_feature_names(df)
+    feature_names = whole_hvg_cluster_feature_names(df; requested_features=feature_names)
     raw_X = whole_hvg_clustering_feature_matrix(df, feature_names)
     standardized = whole_hvg_standardized_feature_matrix(raw_X, feature_names)
 
@@ -422,7 +448,8 @@ function save_whole_hvg_clustering_outputs(
         tsne_max_rows=5000,
         tsne_seed=1,
         tsne_iterations=1000,
-        tsne_perplexity=30.0
+        tsne_perplexity=30.0,
+        feature_names=nothing
     )
     mkpath(output_dir)
     mkpath(plot_dir)
@@ -432,7 +459,8 @@ function save_whole_hvg_clustering_outputs(
         tsne_max_rows=tsne_max_rows,
         tsne_seed=tsne_seed,
         tsne_iterations=tsne_iterations,
-        tsne_perplexity=tsne_perplexity
+        tsne_perplexity=tsne_perplexity,
+        feature_names=feature_names
     )
     embedding_df = result.embedding_df
     CSV.write(joinpath(output_dir, "whole_hvg_embedding.csv"), embedding_df)
@@ -503,11 +531,19 @@ function whole_hvg_method_output_dir(base_dir, method, methods)
     length(methods) == 1 ? base_dir : joinpath(base_dir, String(method))
 end
 
+function whole_hvg_input_select_columns(feature_names)
+    isnothing(feature_names) && return nothing
+    selected = Set(String.(feature_names))
+    union!(selected, String.(WHOLE_HVG_CLUSTER_ID_COLUMNS))
+    (_, name) -> String(name) in selected
+end
+
 methods = whole_hvg_cluster_methods()
 tsne_max_rows = isdefined(Main, :WHOLE_HVG_TSNE_MAX_ROWS) ? WHOLE_HVG_TSNE_MAX_ROWS : 5000
 tsne_seed = isdefined(Main, :WHOLE_HVG_TSNE_SEED) ? WHOLE_HVG_TSNE_SEED : 1
 tsne_iterations = isdefined(Main, :WHOLE_HVG_TSNE_ITERATIONS) ? WHOLE_HVG_TSNE_ITERATIONS : 1000
 tsne_perplexity = isdefined(Main, :WHOLE_HVG_TSNE_PERPLEXITY) ? WHOLE_HVG_TSNE_PERPLEXITY : 30.0
+cluster_feature_names = whole_hvg_requested_cluster_feature_names()
 input_csv = isdefined(Main, :WHOLE_HVG_CLUSTER_INPUT_CSV) ?
     WHOLE_HVG_CLUSTER_INPUT_CSV :
     newest_whole_hvg_bin_scores()
@@ -517,7 +553,10 @@ compute_if_missing = isdefined(Main, :WHOLE_HVG_CLUSTER_COMPUTE_IF_MISSING) ?
 
 bin_df = if !isnothing(input_csv)
     @info "Loading whole-HVG bin scores for clustering" input_csv
-    CSV.read(input_csv, DataFrame)
+    select_columns = whole_hvg_input_select_columns(cluster_feature_names)
+    isnothing(select_columns) ?
+        CSV.read(input_csv, DataFrame) :
+        CSV.read(input_csv, DataFrame; select=select_columns)
 elseif compute_if_missing
     patients = isdefined(Main, :WHOLE_HVG_PATIENTS) ?
         WHOLE_HVG_PATIENTS :
@@ -576,7 +615,8 @@ for method in methods
         tsne_max_rows=tsne_max_rows,
         tsne_seed=tsne_seed,
         tsne_iterations=tsne_iterations,
-        tsne_perplexity=tsne_perplexity
+        tsne_perplexity=tsne_perplexity,
+        feature_names=cluster_feature_names
     )
 end
 
